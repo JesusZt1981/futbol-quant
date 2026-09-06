@@ -22,17 +22,12 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static(publicDir));
 
 async function saveHistory(category, payload) {
-  try {
-    await store.insert(category, payload);
-    return true;
-  } catch (error) {
-    console.error(`[history:${category}]`, error.message);
-    return false;
-  }
+  try { await store.insert(category, payload); return true; }
+  catch (error) { console.error(`[history:${category}]`, error.message); return false; }
 }
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, version: '1.1.1', store: store.status(), timestamp: new Date().toISOString() });
+  res.json({ ok: true, version: '1.2.0', store: store.status(), timestamp: new Date().toISOString() });
 });
 
 app.get('/api/providers/status', (req, res) => {
@@ -42,6 +37,47 @@ app.get('/api/providers/status', (req, res) => {
     supabase: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     leagues: apiFootball.LEAGUES
   });
+});
+
+app.post('/api/data/bootstrap', async (req, res) => {
+  try { res.json(await store.bootstrap(req.body?.mode || 'all')); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/data/summary', async (req, res) => {
+  try { res.json(await store.dataSummary()); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/data/teams/:league', async (req, res) => {
+  try { res.json(await store.teams(req.params.league)); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/predict/history', async (req, res) => {
+  try {
+    const league = String(req.body.league || '');
+    const home = String(req.body.home || '');
+    const away = String(req.body.away || '');
+    if (!league || !home || !away || home === away) return res.status(400).json({ error: 'Selecciona liga, local y visitante distintos' });
+
+    const input = await store.predictionInput(league, home, away);
+    const markets = deriveMarkets(input.homeXg, input.awayXg);
+    const result = {
+      league, home, away,
+      probabilities: { L: markets.home, E: markets.draw, V: markets.away },
+      goals: { home: input.homeXg, away: input.awayXg, total: markets.expectedGoals.total },
+      over25: markets.over25,
+      btts: markets.bttsYes,
+      sample: input.sample,
+      baselines: input.baselines,
+      teamRates: input.teamRates,
+      methodology: input.methodology,
+      dataSource: 'Historial real guardado en Supabase'
+    };
+    const historySaved = await saveHistory('historical_predictions', { input: req.body, output: result });
+    res.json({ ...result, historySaved });
+  } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
 app.get('/api/demo/progol', (req, res) => {
@@ -54,7 +90,6 @@ app.post('/api/model/poisson', async (req, res) => {
     const baseHomeXg = Number(req.body.homeXg);
     const baseAwayXg = Number(req.body.awayXg);
     if (!(baseHomeXg >= 0) || !(baseAwayXg >= 0)) return res.status(400).json({ error: 'xG inválido' });
-
     const adjusted = adjustedXg(baseHomeXg, baseAwayXg, req.body.features || {});
     const markets = deriveMarkets(adjusted.home, adjusted.away);
     const result = {
@@ -62,14 +97,7 @@ app.post('/api/model/poisson', async (req, res) => {
       markets,
       fairOdds: { L: fairOdds(markets.home), E: fairOdds(markets.draw), V: fairOdds(markets.away) }
     };
-
-    const historySaved = await saveHistory('model_runs', {
-      model: 'poisson',
-      version: '1.1.1',
-      input: req.body,
-      output: result
-    });
-
+    const historySaved = await saveHistory('model_runs', { model: 'poisson', version: '1.2.0', input: req.body, output: result });
     res.json({ ...result, historySaved, historyBackend: store.status().backend });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -124,10 +152,8 @@ app.post('/api/progol/optimize', async (req, res) => {
 });
 
 app.get('/api/football/fixtures', async (req, res) => {
-  try {
-    const data = await apiFootball.fixtures(req.query);
-    res.json(data);
-  } catch (error) { res.status(502).json({ error: error.message }); }
+  try { res.json(await apiFootball.fixtures(req.query)); }
+  catch (error) { res.status(502).json({ error: error.message }); }
 });
 
 app.get('/api/football/fixture/:id/bundle', async (req, res) => {
