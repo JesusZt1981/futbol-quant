@@ -17,8 +17,14 @@ async function insert(table, row) {
     memory[table].push(item);
     return item;
   }
+
   const { data, error } = await client.functions.invoke('futbol-quant-history', {
-    body: { category: table, payload: row, observed_at: row.observed_at || new Date().toISOString() }
+    body: {
+      action: 'insert',
+      category: table,
+      payload: row,
+      observed_at: row.observed_at || new Date().toISOString()
+    }
   });
   if (error) throw error;
   return data;
@@ -26,12 +32,23 @@ async function insert(table, row) {
 
 async function list(table, limit = 100) {
   if (!client) return (memory[table] || []).slice(-limit).reverse();
+
   const { data, error } = await client.functions.invoke('futbol-quant-history', {
-    method: 'GET',
-    query: { category: table, limit: String(limit) }
+    body: {
+      action: 'list',
+      category: table || null,
+      limit: Number(limit || 100)
+    }
   });
   if (error) throw error;
-  return (data || []).map((r) => ({ id: r.id, created_at: r.created_at, observed_at: r.observed_at, ...(r.payload || {}) }));
+
+  return (data || []).map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    observed_at: r.observed_at,
+    category: r.category,
+    ...(r.payload || {})
+  }));
 }
 
 function status() {
