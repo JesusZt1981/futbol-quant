@@ -4,205 +4,132 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0c1720" />
-  <title>Fútbol Quant — Pronósticos, Riesgo y Progol</title>
+  <title>Fútbol Quant — Probabilidades e historial</title>
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./simple.css" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">FQ</div>
-        <div><strong>Fútbol Quant</strong><small>Motor probabilístico</small></div>
+        <div><strong>Fútbol Quant</strong><small>Análisis probabilístico</small></div>
       </div>
-      <nav id="nav">
-        <button class="nav-btn active" data-view="overview">Resumen</button>
-        <button class="nav-btn" data-view="model">Modelo</button>
-        <button class="nav-btn" data-view="risk">Riesgo / Stake</button>
-        <button class="nav-btn" data-view="progol">Progol MS</button>
-        <button class="nav-btn" data-view="lab">Laboratorio</button>
-        <button class="nav-btn" data-view="data">Datos / APIs</button>
+      <nav>
+        <button class="nav-btn active" data-view="overview">Inicio</button>
+        <button class="nav-btn" data-view="predict">Pronóstico</button>
+        <button class="nav-btn" data-view="bet">Simular apuesta</button>
+        <button class="nav-btn" data-view="progol">Progol</button>
+        <button class="nav-btn" data-view="history">Historial</button>
+        <button class="nav-btn" data-view="data">Base de datos</button>
       </nav>
-      <div class="sidebar-footer">
-        <span class="dot" id="healthDot"></span><span id="healthText">Conectando…</span>
-      </div>
+      <div class="sidebar-footer"><span class="dot" id="healthDot"></span><span id="healthText">Conectando…</span></div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">SISTEMA CUANTITATIVO</p>
-          <h1 id="pageTitle">Resumen</h1>
-        </div>
-        <div class="top-actions">
-          <span class="pill warning">Paper betting</span>
-          <button class="ghost" id="refreshBtn">Actualizar</button>
-        </div>
+        <div><p class="eyebrow">FÚTBOL QUANT</p><h1 id="pageTitle">Inicio</h1></div>
+        <button class="ghost" id="refreshBtn">Actualizar</button>
       </header>
 
       <section class="view active" id="view-overview">
         <div class="hero-card">
           <div>
-            <p class="eyebrow">OBJETIVO</p>
-            <h2>Probabilidad primero. Apuesta después.</h2>
-            <p class="lead">El sistema separa predicción, valor contra mercado, riesgo y tamaño de apuesta. Ningún pick se considera válido sin datos suficientes, cuota y registro para backtesting.</p>
+            <p class="eyebrow">QUÉ HACE</p>
+            <h2>Te muestra probabilidades, no “picks”.</h2>
+            <p class="lead">El sistema parte de resultados reales, calcula qué tan probable es que gane el local, haya empate o gane el visitante, y guarda cada análisis para poder comprobar después si funciona.</p>
           </div>
-          <div class="hero-score">
-            <span>V1</span>
-            <strong>Auditable</strong>
-            <small>sin caja negra</small>
-          </div>
+          <div class="hero-score"><span>%</span><strong>Probabilidad</strong><small>antes que apuesta</small></div>
         </div>
 
-        <div class="grid four" id="summaryCards">
-          <article class="metric-card"><span>Ligas núcleo</span><strong>4</strong><small>México · España · Italia · Inglaterra</small></article>
-          <article class="metric-card"><span>Mercados V1</span><strong>3</strong><small>1X2 · O/U 2.5 · BTTS</small></article>
-          <article class="metric-card"><span>Progol MS</span><strong>9</strong><small>partidos por quiniela</small></article>
-          <article class="metric-card"><span>Stake máximo</span><strong>2%</strong><small>por apuesta, configurable</small></article>
+        <div class="data-strip" id="overviewData">
+          <div class="data-box"><span>Partidos históricos</span><strong id="totalMatches">0</strong></div>
+          <div class="data-box"><span>Ligas con datos</span><strong id="totalLeagues">0</strong></div>
+          <div class="data-box"><span>Historial guardado</span><strong class="badge-ok">Supabase</strong></div>
+          <div class="data-box"><span>Versión</span><strong id="appVersion">—</strong></div>
         </div>
 
         <div class="grid two">
           <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">PIPELINE</p><h3>Cómo decide el sistema</h3></div></div>
-            <div class="pipeline">
-              <div><b>1</b><span>Datos</span><small>xG, tiros, planteles, viajes, lesiones, clima, mercado</small></div>
-              <div><b>2</b><span>Modelos</span><small>Poisson/Dixon-Coles, Elo, forma ajustada, contexto</small></div>
-              <div><b>3</b><span>Calibración</span><small>probabilidades auditables y fair odds</small></div>
-              <div><b>4</b><span>Mercado</span><small>quitar vigorish, medir edge y CLV</small></div>
-              <div><b>5</b><span>Riesgo</span><small>¼ Kelly + topes + calidad de datos</small></div>
-              <div><b>6</b><span>Registro</span><small>paper betting, ROI, Brier, log loss</small></div>
+            <div class="panel-title"><div><p class="eyebrow">LECTURA SIMPLE</p><h3>Ejemplo de resultado</h3></div></div>
+            <div class="prob-grid">
+              <div class="prob-card best"><span>Gana local</span><strong>48%</strong></div>
+              <div class="prob-card"><span>Empate</span><strong>27%</strong></div>
+              <div class="prob-card"><span>Gana visitante</span><strong>25%</strong></div>
             </div>
+            <p class="simple-note">48% no significa “apuesta segura”. Significa que, según el modelo y los datos disponibles, de muchos partidos similares el local sería el resultado más probable.</p>
           </article>
           <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">REGLAS DE SEGURIDAD</p><h3>Cuándo NO apostar</h3></div></div>
-            <ul class="rules">
-              <li>Edge menor al umbral mínimo.</li>
-              <li>Alineación clave sin confirmar y alta sensibilidad.</li>
-              <li>Datos insuficientes o cobertura incompleta.</li>
-              <li>Mercado se movió y destruyó el valor original.</li>
-              <li>Exposición acumulada del día supera el límite.</li>
-              <li>Modelo y mercado discrepan demasiado sin explicación verificable.</li>
-            </ul>
+            <div class="panel-title"><div><p class="eyebrow">CASA DE APUESTAS</p><h3>También en pesos, no en momios</h3></div></div>
+            <div class="payoff-grid">
+              <div><span>Si apuestas</span><strong>$100</strong></div>
+              <div><span>La casa devuelve</span><strong>$190</strong></div>
+              <div><span>Ganancia neta</span><strong>$90</strong></div>
+            </div>
+            <p class="simple-note" style="margin-top:12px">La aplicación podrá comparar ese pago con nuestra probabilidad. Así sabremos si el riesgo parece justificarse o si conviene no apostar.</p>
           </article>
         </div>
       </section>
 
-      <section class="view" id="view-model">
-        <div class="section-intro"><div><p class="eyebrow">SANDBOX</p><h2>Modelo de goles + handicaps contextuales</h2></div><p>Prueba cómo cambian las probabilidades cuando ajustamos xG por descanso, lesiones, viaje, alineación y forma.</p></div>
+      <section class="view" id="view-predict">
+        <div class="section-intro"><div><p class="eyebrow">PRONÓSTICO CON HISTORIAL REAL</p><h2>Selecciona un partido</h2></div><p>La primera versión usa resultados reales recientes, rendimiento como local/visitante y un modelo Poisson regularizado.</p></div>
         <div class="grid two align-start">
-          <form class="panel form-grid" id="modelForm">
-            <div class="field"><label>xG base local</label><input type="number" step="0.01" min="0" name="homeXg" value="1.55"></div>
-            <div class="field"><label>xG base visita</label><input type="number" step="0.01" min="0" name="awayXg" value="1.10"></div>
-            <h4 class="span-2">Local</h4>
-            <div class="field"><label>Diferencia días descanso</label><input type="number" step="1" name="homeRest" value="1"></div>
-            <div class="field"><label>Impacto lesiones (0–25)</label><input type="number" step="0.1" min="0" max="25" name="homeInj" value="2"></div>
-            <div class="field"><label>Fatiga viaje (0–10)</label><input type="number" step="0.1" min="0" max="10" name="homeTravel" value="1"></div>
-            <div class="field"><label>Fuerza XI vs habitual (-10 a 10)</label><input type="number" step="0.1" min="-10" max="10" name="homeXi" value="1"></div>
-            <h4 class="span-2">Visitante</h4>
-            <div class="field"><label>Diferencia días descanso</label><input type="number" step="1" name="awayRest" value="-1"></div>
-            <div class="field"><label>Impacto lesiones (0–25)</label><input type="number" step="0.1" min="0" max="25" name="awayInj" value="4"></div>
-            <div class="field"><label>Fatiga viaje (0–10)</label><input type="number" step="0.1" min="0" max="10" name="awayTravel" value="3"></div>
-            <div class="field"><label>Fuerza XI vs habitual (-10 a 10)</label><input type="number" step="0.1" min="-10" max="10" name="awayXi" value="-1"></div>
-            <button class="primary span-2" type="submit">Calcular escenario</button>
+          <form class="panel form-grid" id="predictForm">
+            <div class="field span-2"><label>Liga</label><select id="leagueSelect" name="league"><option value="">Selecciona…</option></select></div>
+            <div class="field"><label>Equipo local</label><select id="homeSelect" name="home"><option value="">Selecciona…</option></select></div>
+            <div class="field"><label>Equipo visitante</label><select id="awaySelect" name="away"><option value="">Selecciona…</option></select></div>
+            <button class="primary span-2 big-action" type="submit">Calcular probabilidades</button>
           </form>
-          <article class="panel" id="modelResult"><div class="empty">Calcula un escenario para ver probabilidades y cuotas justas.</div></article>
+          <article class="panel" id="predictResult"><div class="empty">Selecciona los equipos para calcular un pronóstico basado en la base histórica.</div></article>
         </div>
       </section>
 
-      <section class="view" id="view-risk">
-        <div class="section-intro"><div><p class="eyebrow">BANKROLL MANAGEMENT</p><h2>¿Cuánto arriesgar?</h2></div><p>El tamaño se calcula con Kelly fraccionado y además se penaliza si la calidad de datos o la alineación son inciertas.</p></div>
+      <section class="view" id="view-bet">
+        <div class="section-intro"><div><p class="eyebrow">SIMULADOR</p><h2>¿Qué podría pasar con tu dinero?</h2></div><p>Sin mostrar momios: indica cuánto apostarías y cuánto devolvería la casa si ganas.</p></div>
         <div class="grid two align-start">
-          <form class="panel form-grid" id="riskForm">
-            <div class="field"><label>Bankroll ($)</label><input type="number" min="1" name="bankroll" value="10000"></div>
-            <div class="field"><label>Cuota decimal</label><input type="number" min="1.01" step="0.01" name="decimalOdds" value="1.95"></div>
-            <div class="field"><label>Probabilidad del modelo (%)</label><input type="number" min="1" max="99" step="0.1" name="prob" value="55"></div>
-            <div class="field"><label>Kelly usado</label><select name="kelly"><option value="0.125">1/8 Kelly</option><option value="0.25" selected>1/4 Kelly</option><option value="0.5">1/2 Kelly</option></select></div>
-            <div class="field"><label>Calidad de datos (%)</label><input type="number" min="0" max="100" name="quality" value="90"></div>
-            <div class="field"><label>Confianza alineación (%)</label><input type="number" min="0" max="100" name="lineup" value="85"></div>
-            <button class="primary span-2" type="submit">Evaluar apuesta</button>
+          <form class="panel form-grid" id="betForm">
+            <div class="field"><label>Probabilidad que calculó Fútbol Quant (%)</label><input id="betProb" type="number" min="1" max="99" step="0.1" value="55"></div>
+            <div class="field"><label>¿Cuánto quieres apostar? ($)</label><input id="betAmount" type="number" min="1" step="1" value="100"></div>
+            <div class="field span-2"><label>Si apuestas $100, ¿cuánto te devuelve la casa en total si ganas? ($)</label><input id="houseReturn100" type="number" min="101" step="1" value="190"></div>
+            <button class="primary span-2 big-action" type="submit">Evaluar</button>
           </form>
-          <article class="panel" id="riskResult"><div class="empty">Introduce una cuota y la probabilidad propia del modelo.</div></article>
+          <article class="panel" id="betResult"><div class="empty">Aquí verás cuánto recibirías, cuánto ganarías neto y si el pago parece suficiente para la probabilidad estimada.</div></article>
         </div>
       </section>
 
       <section class="view" id="view-progol">
-        <div class="section-intro"><div><p class="eyebrow">QUINIELA</p><h2>Optimizador Progol Media Semana</h2></div><p>Compara probabilidad del modelo con selección pública y distribuye el presupuesto entre líneas distintas.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">PROGOL</p><h2>Probabilidades L / E / V</h2></div><p>En Progol el premio final depende de la bolsa y de cuántos ganadores haya; por eso mostramos probabilidades y cobertura, no una “ganancia prometida”.</p></div>
         <div class="notice danger" id="demoNotice">Cargando…</div>
         <div class="progol-controls panel compact">
           <div class="field"><label>Presupuesto ($)</label><input type="number" id="progolBudget" min="15" step="15" value="150"></div>
-          <div class="field"><label>Estrategia</label><select id="progolMode"><option value="conservative">Conservadora</option><option value="balanced" selected>Balanceada</option><option value="contrarian">Contrarian</option></select></div>
-          <button class="primary" id="optimizeBtn">Optimizar</button>
+          <div class="field"><label>Perfil</label><select id="progolMode"><option value="conservative">Más conservador</option><option value="balanced" selected>Balanceado</option><option value="contrarian">Más arriesgado</option></select></div>
+          <button class="primary" id="optimizeBtn">Armar combinaciones</button>
         </div>
         <div class="progol-table-wrap panel">
-          <table class="progol-table">
-            <thead><tr><th>#</th><th>Partido</th><th>Modelo L/E/V</th><th>Público L/E/V</th><th>Valor</th><th>Cobertura</th></tr></thead>
-            <tbody id="progolBody"></tbody>
-          </table>
+          <table class="progol-table"><thead><tr><th>#</th><th>Partido</th><th>Probabilidad FQ</th><th>Elección pública</th><th>Sugerencia</th></tr></thead><tbody id="progolBody"></tbody></table>
         </div>
-        <article class="panel" id="progolResult"><div class="empty">Pulsa “Optimizar” para crear líneas dentro del presupuesto.</div></article>
+        <article class="panel" id="progolResult"><div class="empty">Genera combinaciones dentro de tu presupuesto.</div></article>
       </section>
 
-      <section class="view" id="view-lab">
-        <div class="section-intro"><div><p class="eyebrow">BACKTESTING</p><h2>Laboratorio de validación</h2></div><p>Un modelo no se aprueba por una racha. Debe sobrevivir miles de predicciones y permanecer calibrado fuera de muestra.</p></div>
-        <div class="grid three">
-          <article class="metric-card"><span>Métrica principal</span><strong>Brier</strong><small>calidad de probabilidades 1X2</small></article>
-          <article class="metric-card"><span>Rentabilidad</span><strong>ROI</strong><small>sobre stake total</small></article>
-          <article class="metric-card"><span>Mercado</span><strong>CLV</strong><small>cuota tomada vs cierre</small></article>
-        </div>
-        <div class="grid two align-start">
-          <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">CHECKLIST</p><h3>Condiciones para pasar de paper a real</h3></div></div>
-            <div class="checklist">
-              <label><input type="checkbox" disabled> 1,000+ predicciones fuera de muestra</label>
-              <label><input type="checkbox" disabled> Brier mejor que baseline de mercado</label>
-              <label><input type="checkbox" disabled> CLV positivo de forma consistente</label>
-              <label><input type="checkbox" disabled> ROI positivo después de vig</label>
-              <label><input type="checkbox" disabled> drawdown compatible con bankroll</label>
-              <label><input type="checkbox" disabled> calibración estable por liga/mercado</label>
-            </div>
-          </article>
-          <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">PRUEBA RÁPIDA</p><h3>Métricas sobre datos JSON</h3></div></div>
-            <textarea id="backtestInput" rows="10" spellcheck="false">{
-  "predictions": [
-    {"probabilities":{"L":0.55,"E":0.27,"V":0.18},"result":"L"},
-    {"probabilities":{"L":0.40,"E":0.31,"V":0.29},"result":"E"},
-    {"probabilities":{"L":0.33,"E":0.29,"V":0.38},"result":"V"}
-  ],
-  "bets": [
-    {"stake":100,"pnl":95},
-    {"stake":100,"pnl":-100},
-    {"stake":100,"pnl":88}
-  ]
-}</textarea>
-            <button class="primary" id="backtestBtn">Calcular métricas</button>
-            <div id="backtestResult" class="result-box"></div>
-          </article>
-        </div>
+      <section class="view" id="view-history">
+        <div class="section-intro"><div><p class="eyebrow">AUDITORÍA</p><h2>Historial de análisis</h2></div><p>Cada pronóstico queda guardado para compararlo después con el resultado real.</p></div>
+        <article class="panel"><div class="panel-title"><div><h3>Últimos pronósticos</h3></div><button class="ghost" id="loadHistoryBtn">Recargar</button></div><div class="history-list" id="historyList"><div class="empty">Cargando…</div></div></article>
       </section>
 
       <section class="view" id="view-data">
-        <div class="section-intro"><div><p class="eyebrow">COBERTURA</p><h2>Matriz de datos</h2></div><p>Recolectamos todo lo disponible, pero solo las variables que mejoren validación fuera de muestra entran al modelo.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">BASE DE DATOS</p><h2>Datos reales usados por el modelo</h2></div><p>Premier League, LaLiga y Serie A se cargan desde históricos públicos; Liga MX usa históricos de FotMob publicados en un repositorio de datos y la temporada actual disponible.</p></div>
         <div class="grid two align-start">
           <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">PROVEEDORES</p><h3>Estado de conexiones</h3></div></div>
-            <div id="providerStatus" class="provider-list"></div>
+            <div class="panel-title"><div><h3>Cobertura actual</h3></div></div>
+            <div id="dataSummary" class="history-list"><div class="empty">Consultando…</div></div>
           </article>
           <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">LIGAS NÚCLEO</p><h3>Profundidad máxima</h3></div></div>
-            <div class="league-list">
-              <div><span>🇲🇽</span><b>Liga MX</b><small>equipos, jugadores, liguilla, altitud</small></div>
-              <div><span>🇪🇸</span><b>LaLiga</b><small>equipo + jugador + mercados</small></div>
-              <div><span>🇮🇹</span><b>Serie A</b><small>equipo + jugador + mercados</small></div>
-              <div><span>🏴</span><b>Premier League</b><small>equipo + jugador + mercados</small></div>
-            </div>
+            <div class="panel-title"><div><h3>Cargar / actualizar historial</h3></div></div>
+            <p class="simple-note">La carga es idempotente: si un partido ya existe, se actualiza y no se duplica.</p>
+            <button class="primary big-action" id="bootstrapBtn" style="margin-top:12px">Cargar base histórica ahora</button>
+            <div id="bootstrapStatus" class="simple-note">Todavía no se ha iniciado una carga desde esta pantalla.</div>
           </article>
         </div>
-        <article class="panel">
-          <div class="panel-title"><div><p class="eyebrow">FEATURE STORE</p><h3>Variables a almacenar</h3></div></div>
-          <div class="feature-grid">
-            <span>xG / xGA</span><span>tiros / SOT</span><span>big chances</span><span>posesión</span><span>PPDA</span><span>pases progresivos</span><span>corners</span><span>faltas</span><span>tarjetas</span><span>duelos</span><span>portero</span><span>alineación</span><span>lesiones</span><span>suspensiones</span><span>minutos acumulados</span><span>descanso</span><span>distancia viaje</span><span>zona horaria</span><span>altitud</span><span>clima</span><span>superficie</span><span>árbitro</span><span>entrenador</span><span>sistema táctico</span><span>fuerza rival</span><span>estado torneo</span><span>cuotas apertura</span><span>cuotas cierre</span><span>movimiento</span><span>% Progol</span>
-          </div>
-        </article>
       </section>
     </main>
   </div>
