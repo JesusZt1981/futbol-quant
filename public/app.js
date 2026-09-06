@@ -4,6 +4,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 let progolDemo = null;
 let dataSummary = [];
+let liveTimer = null;
 
 function pct(v, d=1){ return `${(Number(v)*100).toFixed(d)}%`; }
 function money(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2}).format(Number(v||0)); }
@@ -23,6 +24,7 @@ function setView(view){
   $('#pageTitle').textContent=b?.textContent||'Fútbol Quant';
   if(view==='history') loadHistory();
   if(view==='data') loadDataSummary();
+  if(view==='overview') loadLiveMatches();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 $$('.nav-btn').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
@@ -50,11 +52,12 @@ function renderDataSummary(rows){
       <b>${names[r.league_key]||r.competition||r.league_key}</b>
       <small>${Number(r.finished||0).toLocaleString('es-MX')} partidos · ${fmtDate(r.from)} a ${fmtDate(r.to)}</small>
       <span class="badge-ok">Listo</span>
-    </div>`).join(''):'<div class="empty">La base todavía está vacía.</div>';
+    </div>`).join(''):'<div class="empty">La base todavía está vacía. Sin historial no se habilitan las ligas ni los equipos del pronóstico.</div>';
   const league=$('#leagueSelect');
   const current=league.value;
   league.innerHTML='<option value="">Selecciona…</option>'+dataSummary.map(r=>`<option value="${r.league_key}">${names[r.league_key]||r.competition}</option>`).join('');
   if(dataSummary.some(r=>r.league_key===current)) league.value=current;
+  $('#bootstrapStatus').textContent=total?`Base lista: ${total.toLocaleString('es-MX')} partidos guardados.`:'Base vacía: se intentará cargar automáticamente.';
 }
 
 async function loadDataSummary(autoBootstrap=true){
@@ -66,13 +69,16 @@ async function loadDataSummary(autoBootstrap=true){
       $('#bootstrapStatus').textContent='La base está vacía. Iniciando carga histórica automática…';
       await bootstrapData();
     }
-  }catch(e){ $('#dataSummary').innerHTML=`<div class="simple-note">${e.message}</div>`; }
+  }catch(e){
+    $('#dataSummary').innerHTML=`<div class="simple-note">No se pudo leer la base: ${e.message}</div>`;
+    $('#bootstrapStatus').textContent=`Error de conexión con la base: ${e.message}`;
+  }
 }
 
 async function bootstrapData(){
   const btn=$('#bootstrapBtn');
   if(btn){btn.disabled=true;btn.textContent='Cargando historial…';}
-  $('#bootstrapStatus').textContent='Descargando y guardando resultados reales. Puede tardar unos segundos…';
+  $('#bootstrapStatus').textContent='Descargando y guardando resultados reales. Puede tardar un poco…';
   try{
     const r=await api('/api/data/bootstrap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'all'})});
     $('#bootstrapStatus').innerHTML=`<span class="badge-ok">Carga terminada.</span> Base con ${Number(r.total_rows||0).toLocaleString('es-MX')} registros.`;
@@ -88,7 +94,11 @@ $('#leagueSelect').addEventListener('change',async(e)=>{
   const league=e.target.value;
   $('#homeSelect').innerHTML='<option value="">Cargando…</option>';
   $('#awaySelect').innerHTML='<option value="">Cargando…</option>';
-  if(!league)return;
+  if(!league){
+    $('#homeSelect').innerHTML='<option value="">Selecciona…</option>';
+    $('#awaySelect').innerHTML='<option value="">Selecciona…</option>';
+    return;
+  }
   try{
     const teams=await api(`/api/data/teams/${encodeURIComponent(league)}`);
     const opts='<option value="">Selecciona…</option>'+teams.map(t=>`<option>${t}</option>`).join('');
@@ -119,7 +129,7 @@ $('#predictForm').addEventListener('submit',async(e)=>{
         <div><span>Más de 2.5 goles</span><strong>${pct(r.over25)}</strong></div>
       </div>
       <p class="simple-note" style="margin-top:12px">Base usada: ${r.sample.home} partidos recientes del local en casa y ${r.sample.away} del visitante fuera. ${r.methodology}</p>
-      <p class="simple-note" style="margin-top:10px">El resultado con mayor porcentaje no significa apuesta recomendada. Para eso hay que compararlo con lo que pague la casa.</p>`;
+      <p class="simple-note" style="margin-top:10px">El análisis quedó guardado en Historial para compararlo después con el resultado real.</p>`;
   }catch(err){ $('#predictResult').innerHTML=`<div class="simple-note">${err.message}</div>`; }
 });
 
@@ -147,10 +157,10 @@ $('#betForm').addEventListener('submit',async(e)=>{
     </div>
     <div class="prob-grid">
       <div class="prob-card"><span>Probabilidad FQ</span><strong>${pct(probability)}</strong></div>
-      <div class="prob-card"><span>Probabilidad mínima que exige ese pago</span><strong>${pct(implied)}</strong></div>
+      <div class="prob-card"><span>Probabilidad mínima del pago</span><strong>${pct(implied)}</strong></div>
       <div class="prob-card ${edge>0?'best':''}"><span>Diferencia</span><strong>${edge>=0?'+':''}${pct(edge)}</strong></div>
     </div>
-    <p class="simple-note">Valor esperado aproximado por esta apuesta: ${money(ev)}. Es una estimación matemática, no una garantía de ganancia.</p>`;
+    <p class="simple-note">Valor esperado aproximado por esta apuesta: ${money(ev)}. Es una estimación matemática, no una garantía.</p>`;
 });
 
 function triplet(obj){return `<div class="triplet">${['L','E','V'].map(k=>`<span class="chip">${k} ${pct(obj[k])}</span>`).join('')}</div>`;}
@@ -177,13 +187,58 @@ async function loadHistory(){
     $('#historyList').innerHTML=rows.length?rows.map(r=>{
       const o=r.output||{}, p=o.probabilities||{};
       return `<div class="history-item"><small>${new Date(r.created_at).toLocaleString('es-MX')}</small><div><b>${o.home||'—'} vs ${o.away||'—'}</b><br><small>L ${p.L?pct(p.L):'—'} · E ${p.E?pct(p.E):'—'} · V ${p.V?pct(p.V):'—'}</small></div><span class="badge-ok">Guardado</span></div>`;
-    }).join(''):'<div class="empty">Aún no hay pronósticos guardados.</div>';
+    }).join(''):'<div class="empty">Aún no hay pronósticos guardados. Calcula uno en la pantalla Pronóstico y aparecerá aquí.</div>';
   }catch(e){$('#historyList').innerHTML=`<div class="simple-note">${e.message}</div>`;}
 }
 $('#loadHistoryBtn').addEventListener('click',loadHistory);
 
-$('#refreshBtn').addEventListener('click',()=>{health();loadDataSummary(false);loadProgol();});
+async function loadLiveDetail(fixtureId){
+  $('#liveDetail').innerHTML='<div class="empty">Actualizando partido…</div>';
+  try{
+    const r=await api(`/api/live/match/${fixtureId}`);
+    let market='<div class="simple-note">La fuente no entregó porcentajes 1X2 en vivo para este partido.</div>';
+    if(r.market?.consensus){
+      market=`${probCards(r.market.consensus)}<p class="simple-note" style="margin-top:10px">Estos son porcentajes implícitos del mercado en vivo, normalizados para quitar el margen de la casa. Se actualizan cuando pulsas Actualizar o automáticamente mientras esta pantalla está abierta.</p>`;
+    }
+    $('#liveDetail').innerHTML=`
+      <div class="panel-title"><div><p class="eyebrow">EN VIVO · ${r.minute??'—'}'</p><h3>${r.home} ${r.score?.home??0} - ${r.score?.away??0} ${r.away}</h3></div><span class="pill">${r.status||'LIVE'}</span></div>
+      ${market}
+      <p class="simple-note" style="margin-top:10px">Cada lectura se guarda en Supabase para construir la gráfica de cómo fue cambiando el mercado durante el partido.</p>`;
+    $('#liveDetail').dataset.fixtureId=fixtureId;
+  }catch(e){ $('#liveDetail').innerHTML=`<div class="simple-note">${e.message}</div>`; }
+}
+
+async function loadLiveMatches(){
+  const box=$('#liveMatches');
+  try{
+    const r=await api('/api/live/matches');
+    if(!r.matches?.length){
+      box.innerHTML='<div class="empty">No hay partidos en vivo reportados por la fuente en este momento.</div>';
+      return;
+    }
+    box.innerHTML=r.matches.map(m=>`<button class="history-item live-match" data-fixture="${m.fixtureId}" style="width:100%;text-align:left"><div><b>${m.home} ${m.homeGoals??0} - ${m.awayGoals??0} ${m.away}</b><br><small>${m.league||''} · ${m.minute??'—'}' · ${m.status||''}</small></div><span class="badge-ok">Abrir</span></button>`).join('');
+    $$('.live-match').forEach(b=>b.addEventListener('click',()=>loadLiveDetail(b.dataset.fixture)));
+  }catch(e){
+    box.innerHTML=`<div class="simple-note"><b>Seguimiento en vivo todavía no conectado.</b><br>${e.message}. La aplicación ya tiene preparado el módulo; falta una clave de API-Football para recibir marcador, minuto y cambios del mercado.</div>`;
+  }
+}
+$('#reloadLiveBtn').addEventListener('click',loadLiveMatches);
+
+function startLiveTimer(){
+  if(liveTimer) clearInterval(liveTimer);
+  liveTimer=setInterval(()=>{
+    if($('#view-overview').classList.contains('active')){
+      loadLiveMatches();
+      const id=$('#liveDetail').dataset.fixtureId;
+      if(id) loadLiveDetail(id);
+    }
+  },30000);
+}
+
+$('#refreshBtn').addEventListener('click',()=>{health();loadDataSummary(false);loadProgol();loadLiveMatches();});
 
 health();
 loadDataSummary(true);
 loadProgol();
+loadLiveMatches();
+startLiveTimer();
