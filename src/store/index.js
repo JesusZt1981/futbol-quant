@@ -64,7 +64,7 @@ async function list(table, limit = 100) {
 }
 
 async function dataSummary() {
-  const rows = await pagedMatches({ select: 'league_key,competition,kickoff,finished', limit: 10000 });
+  const rows = await pagedMatches({ select: 'league_key,competition,kickoff,finished', limit: 20000 });
   const map = new Map();
   for (const r of rows) {
     const key = r.league_key;
@@ -128,7 +128,7 @@ async function predictionInput(league, home, away) {
   };
 }
 
-async function bootstrap(mode = 'europe') {
+async function invokeBootstrap(mode) {
   if (!connected) throw new Error('Supabase no está conectado');
   if (!FQ_INTERNAL_KEY) throw new Error('Falta FQ_INTERNAL_KEY en Render');
   const response = await fetch(`${SUPABASE_URL}/functions/v1/futbol-quant-bootstrap`, {
@@ -145,6 +145,26 @@ async function bootstrap(mode = 'europe') {
   if (!response.ok) throw new Error(data?.error || `Carga histórica HTTP ${response.status}`);
   if (data?.ok === false) throw new Error(data.error || 'No se pudo cargar el historial');
   return data;
+}
+
+async function bootstrap(mode = 'all') {
+  const aliases = { europe: 'all' };
+  mode = aliases[mode] || mode;
+  if (mode !== 'all') return invokeBootstrap(mode);
+
+  const modes = ['core', 'argentina', 'uefa_af', 'uefa_gn', 'uefa_oz', 'uefa_competitions'];
+  const results = {};
+  let total_rows = 0;
+  for (const m of modes) {
+    try {
+      const r = await invokeBootstrap(m);
+      results[m] = r;
+      total_rows = Number(r.total_rows || total_rows);
+    } catch (error) {
+      results[m] = { ok: false, error: error.message };
+    }
+  }
+  return { ok: true, total_rows, modes: results };
 }
 
 async function savePredictionAudit(row) {
