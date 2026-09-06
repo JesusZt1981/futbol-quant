@@ -3,6 +3,7 @@
 const memory = { snapshots: [], predictions: [], bets: [] };
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const FQ_INTERNAL_KEY = process.env.FQ_INTERNAL_KEY || '';
 const connected = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 let client = null;
 
@@ -127,14 +128,62 @@ async function predictionInput(league, home, away) {
   };
 }
 
-async function bootstrap() {
-  const summary = await dataSummary();
-  const total_rows = summary.reduce((s, r) => s + Number(r.finished || 0), 0);
-  return { ok: true, total_rows, note: 'La carga automática externa está desactivada; la base ya existente se consulta directamente desde Supabase.' };
+async function bootstrap(mode = 'europe') {
+  if (!connected) throw new Error('Supabase no está conectado');
+  if (!FQ_INTERNAL_KEY) throw new Error('Falta FQ_INTERNAL_KEY en Render');
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/futbol-quant-bootstrap`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'x-fq-key': FQ_INTERNAL_KEY
+    },
+    body: JSON.stringify({ mode })
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.error || `Carga histórica HTTP ${response.status}`);
+  if (data?.ok === false) throw new Error(data.error || 'No se pudo cargar el historial');
+  return data;
+}
+
+async function savePredictionAudit(row) {
+  if (!client) return null;
+  const { data, error } = await client.from('fq_prediction_audit').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function listPredictionAudit(limit = 100) {
+  if (!client) return [];
+  const { data, error } = await client.from('fq_prediction_audit').select('*').order('created_at', { ascending: false }).limit(Math.min(Number(limit || 100), 500));
+  if (error) throw error;
+  return data || [];
+}
+
+async function settlePredictionAudit(id, homeGoals, awayGoals) {
+  if (!client) throw new Error('Supabase no está conectado');
+  const hg = Number(homeGoals), ag = Number(awayGoals);
+  const actual = hg > ag ? 'L' : hg === ag ? 'E' : 'V';
+  const { data: current, error: readError } = await client.from('fq_prediction_audit').select('predicted_outcome').eq('id', id).single();
+  if (readError) throw readError;
+  const { data, error } = await client.from('fq_prediction_audit').update({
+    home_goals: hg,
+    away_goals: ag,
+    actual_outcome: actual,
+    correct: current.predicted_outcome === actual,
+    status: 'final',
+    settled_at: new Date().toISOString()
+  }).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
 }
 
 function status() {
   return { persistent: connected, backend: connected ? 'supabase-direct' : 'memory' };
 }
 
-module.exports = { insert, list, dataSummary, teams, predictionInput, bootstrap, status };
+module.exports = {
+  insert, list, dataSummary, teams, predictionInput, bootstrap,
+  savePredictionAudit, listPredictionAudit, settlePredictionAudit, status
+};
