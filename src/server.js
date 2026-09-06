@@ -18,18 +18,28 @@ const PORT = Number(process.env.PORT || 3000);
 const publicDir = path.join(__dirname, '..', 'public');
 const demo = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'progol-demo.json'), 'utf8'));
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '2mb' }));
 app.use(express.static(publicDir));
 
+async function saveHistory(category, payload) {
+  try {
+    await store.insert(category, payload);
+    return true;
+  } catch (error) {
+    console.error(`[history:${category}]`, error.message);
+    return false;
+  }
+}
+
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, version: '1.1.0', store: store.status(), timestamp: new Date().toISOString() });
+  res.json({ ok: true, version: '1.1.1', store: store.status(), timestamp: new Date().toISOString() });
 });
 
 app.get('/api/providers/status', (req, res) => {
   res.json({
     apiFootball: Boolean(process.env.API_FOOTBALL_KEY),
     oddsApi: Boolean(process.env.ODDS_API_KEY),
-    supabase: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    supabase: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     leagues: apiFootball.LEAGUES
   });
 });
@@ -39,30 +49,42 @@ app.get('/api/demo/progol', (req, res) => {
   res.json({ ...demo, matches: enriched });
 });
 
-app.post('/api/model/poisson', (req, res) => {
+app.post('/api/model/poisson', async (req, res) => {
   try {
     const baseHomeXg = Number(req.body.homeXg);
     const baseAwayXg = Number(req.body.awayXg);
     if (!(baseHomeXg >= 0) || !(baseAwayXg >= 0)) return res.status(400).json({ error: 'xG inválido' });
+
     const adjusted = adjustedXg(baseHomeXg, baseAwayXg, req.body.features || {});
     const markets = deriveMarkets(adjusted.home, adjusted.away);
-    res.json({
+    const result = {
       adjustedXg: adjusted,
       markets,
       fairOdds: { L: fairOdds(markets.home), E: fairOdds(markets.draw), V: fairOdds(markets.away) }
+    };
+
+    const historySaved = await saveHistory('model_runs', {
+      model: 'poisson',
+      version: '1.1.1',
+      input: req.body,
+      output: result
     });
+
+    res.json({ ...result, historySaved, historyBackend: store.status().backend });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
-app.post('/api/market/no-vig', (req, res) => {
+app.post('/api/market/no-vig', async (req, res) => {
   try {
-    const odds = [Number(req.body.L), Number(req.body.E), Number(req.body.V)];
-    const p = noVigFromOdds(odds);
-    res.json({ L: p[0], E: p[1], V: p[2], overround: odds.reduce((s, o) => s + 1/o, 0) - 1 });
+    const inputOdds = [Number(req.body.L), Number(req.body.E), Number(req.body.V)];
+    const p = noVigFromOdds(inputOdds);
+    const result = { L: p[0], E: p[1], V: p[2], overround: inputOdds.reduce((s, o) => s + 1/o, 0) - 1 };
+    const historySaved = await saveHistory('market_runs', { type: 'no-vig', input: req.body, output: result });
+    res.json({ ...result, historySaved });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
-app.post('/api/risk/stake', (req, res) => {
+app.post('/api/risk/stake', async (req, res) => {
   try {
     const result = stakeRecommendation({
       modelProbability: Number(req.body.modelProbability),
@@ -74,18 +96,21 @@ app.post('/api/risk/stake', (req, res) => {
       dataQuality: Number(req.body.dataQuality ?? 1),
       lineupConfidence: Number(req.body.lineupConfidence ?? 1)
     });
-    res.json(result);
+    const historySaved = await saveHistory('risk_runs', { type: 'stake', input: req.body, output: result });
+    res.json({ ...result, historySaved });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
-app.post('/api/risk/match', (req, res) => {
+app.post('/api/risk/match', async (req, res) => {
   try {
     const score = matchRiskScore(req.body);
-    res.json({ score, label: riskLabel(score) });
+    const result = { score, label: riskLabel(score) };
+    const historySaved = await saveHistory('risk_runs', { type: 'match', input: req.body, output: result });
+    res.json({ ...result, historySaved });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
-app.post('/api/progol/optimize', (req, res) => {
+app.post('/api/progol/optimize', async (req, res) => {
   try {
     const result = optimizeProgol({
       matches: req.body.matches,
@@ -93,7 +118,8 @@ app.post('/api/progol/optimize', (req, res) => {
       lineCost: Number(req.body.lineCost || process.env.PROGOL_LINE_COST || 15),
       mode: req.body.mode || 'balanced'
     });
-    res.json(result);
+    const historySaved = await saveHistory('progol_runs', { input: req.body, output: result });
+    res.json({ ...result, historySaved });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
@@ -129,11 +155,21 @@ app.get('/api/snapshots', async (req, res) => {
   catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-app.post('/api/metrics/backtest', (req, res) => {
+app.get('/api/history', async (req, res) => {
+  try { res.json(await store.list(null, Number(req.query.limit || 100))); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/history/:category', async (req, res) => {
+  try { res.json(await store.list(req.params.category, Number(req.query.limit || 100))); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/metrics/backtest', async (req, res) => {
   try {
     const rows = req.body.predictions || [];
     const bets = req.body.bets || [];
-    res.json({
+    const result = {
       nPredictions: rows.length,
       brier: metrics.brierScore(rows),
       logLoss: metrics.logLoss(rows),
@@ -141,7 +177,9 @@ app.post('/api/metrics/backtest', (req, res) => {
       nBets: bets.length,
       roi: metrics.roi(bets),
       hitRate: metrics.hitRate(bets)
-    });
+    };
+    const historySaved = await saveHistory('backtests', { input: req.body, output: result });
+    res.json({ ...result, historySaved });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
