@@ -3,7 +3,6 @@
 const memory = { snapshots: [], predictions: [], bets: [] };
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-const FQ_INTERNAL_KEY = process.env.FQ_INTERNAL_KEY || '';
 const connected = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 let client = null;
 
@@ -64,20 +63,20 @@ async function list(table, limit = 100) {
 }
 
 async function dataSummary() {
-  const rows = await pagedMatches({ select: 'league_key,competition,kickoff,finished', limit: 20000 });
-  const map = new Map();
-  for (const r of rows) {
-    const key = r.league_key;
-    if (!map.has(key)) map.set(key, { league_key: key, competition: r.competition, matches: 0, finished: 0, from: null, to: null });
-    const item = map.get(key);
-    item.matches += 1;
-    if (r.finished) item.finished += 1;
-    if (r.kickoff) {
-      if (!item.to || r.kickoff > item.to) item.to = r.kickoff;
-      if (!item.from || r.kickoff < item.from) item.from = r.kickoff;
-    }
-  }
-  return [...map.values()].sort((a, b) => String(a.competition).localeCompare(String(b.competition)));
+  if (!client) return [];
+  const { data, error } = await client
+    .from('fq_match_summary')
+    .select('league_key,competition,matches,finished,from_date,to_date')
+    .order('competition', { ascending: true });
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    league_key: r.league_key,
+    competition: r.competition,
+    matches: Number(r.matches || 0),
+    finished: Number(r.finished || 0),
+    from: r.from_date,
+    to: r.to_date
+  }));
 }
 
 async function teams(league) {
@@ -128,43 +127,15 @@ async function predictionInput(league, home, away) {
   };
 }
 
-async function invokeBootstrap(mode) {
-  if (!connected) throw new Error('Supabase no está conectado');
-  if (!FQ_INTERNAL_KEY) throw new Error('Falta FQ_INTERNAL_KEY en Render');
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/futbol-quant-bootstrap`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'x-fq-key': FQ_INTERNAL_KEY
-    },
-    body: JSON.stringify({ mode })
-  });
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.error || `Carga histórica HTTP ${response.status}`);
-  if (data?.ok === false) throw new Error(data.error || 'No se pudo cargar el historial');
-  return data;
-}
-
-async function bootstrap(mode = 'all') {
-  const aliases = { europe: 'all' };
-  mode = aliases[mode] || mode;
-  if (mode !== 'all') return invokeBootstrap(mode);
-
-  const modes = ['core', 'argentina', 'uefa_af', 'uefa_gn', 'uefa_oz', 'uefa_competitions'];
-  const results = {};
-  let total_rows = 0;
-  for (const m of modes) {
-    try {
-      const r = await invokeBootstrap(m);
-      results[m] = r;
-      total_rows = Number(r.total_rows || total_rows);
-    } catch (error) {
-      results[m] = { ok: false, error: error.message };
-    }
-  }
-  return { ok: true, total_rows, modes: results };
+async function bootstrap() {
+  const summary = await dataSummary();
+  const total_rows = summary.reduce((s, r) => s + Number(r.finished || 0), 0);
+  return {
+    ok: true,
+    total_rows,
+    competitions: summary.length,
+    note: 'La base histórica ya está precargada en Supabase. Este botón verifica la cobertura; las actualizaciones automáticas se conectarán a la fuente de partidos actuales.'
+  };
 }
 
 async function savePredictionAudit(row) {
