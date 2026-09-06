@@ -18,7 +18,7 @@
       <nav>
         <button class="nav-btn active" data-view="overview">Inicio</button>
         <button class="nav-btn" data-view="predict">Pronóstico</button>
-        <button class="nav-btn" data-view="bet">Simular apuesta</button>
+        <button class="nav-btn" data-view="bet">Casa de apuestas</button>
         <button class="nav-btn" data-view="progol">Progol</button>
         <button class="nav-btn" data-view="history">Historial</button>
         <button class="nav-btn" data-view="data">Base de datos</button>
@@ -29,17 +29,17 @@
     <main class="main">
       <header class="topbar">
         <div><p class="eyebrow">FÚTBOL QUANT</p><h1 id="pageTitle">Inicio</h1></div>
-        <button class="ghost" id="refreshBtn">Actualizar</button>
+        <button class="ghost" id="refreshBtn">Actualizar datos</button>
       </header>
 
       <section class="view active" id="view-overview">
         <div class="hero-card">
           <div>
             <p class="eyebrow">QUÉ HACE</p>
-            <h2>Te muestra probabilidades, no “picks”.</h2>
-            <p class="lead">El sistema parte de resultados reales, calcula qué tan probable es que gane el local, haya empate o gane el visitante, y guarda cada análisis para poder comprobar después si funciona.</p>
+            <h2>Partidos, probabilidades y seguimiento.</h2>
+            <p class="lead">Aquí debes poder abrir un partido real, ver la probabilidad de local / empate / visitante y, si está en vivo, comparar cómo cambia la probabilidad del mercado durante el juego.</p>
           </div>
-          <div class="hero-score"><span>%</span><strong>Probabilidad</strong><small>antes que apuesta</small></div>
+          <div class="hero-score"><span>%</span><strong>Probabilidad</strong><small>no “picks”</small></div>
         </div>
 
         <div class="data-strip" id="overviewData">
@@ -49,56 +49,71 @@
           <div class="data-box"><span>Versión</span><strong id="appVersion">—</strong></div>
         </div>
 
+        <div class="grid two align-start">
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">AHORA</p><h3>Partidos en vivo</h3></div><button class="ghost" id="reloadLiveBtn">Actualizar</button></div>
+            <p class="simple-note">Si hay una fuente en vivo conectada, aquí aparecen los partidos que están jugando ahora. Al abrir uno verás marcador, minuto y porcentajes del mercado.</p>
+            <div id="liveMatches" class="history-list" style="margin-top:12px"><div class="empty">Consultando partidos en vivo…</div></div>
+          </article>
+          <article class="panel" id="liveDetail">
+            <div class="panel-title"><div><p class="eyebrow">SEGUIMIENTO</p><h3>Probabilidad en vivo</h3></div></div>
+            <div class="empty">Selecciona un partido en vivo para ver cómo cambian los porcentajes.</div>
+          </article>
+        </div>
+
         <div class="grid two">
           <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">LECTURA SIMPLE</p><h3>Ejemplo de resultado</h3></div></div>
+            <div class="panel-title"><div><p class="eyebrow">PRONÓSTICO PREVIO</p><h3>Qué significa el porcentaje</h3></div></div>
             <div class="prob-grid">
               <div class="prob-card best"><span>Gana local</span><strong>48%</strong></div>
               <div class="prob-card"><span>Empate</span><strong>27%</strong></div>
               <div class="prob-card"><span>Gana visitante</span><strong>25%</strong></div>
             </div>
-            <p class="simple-note">48% no significa “apuesta segura”. Significa que, según el modelo y los datos disponibles, de muchos partidos similares el local sería el resultado más probable.</p>
+            <p class="simple-note">48% no significa “seguro”. Significa que, según el modelo y los datos disponibles, ese resultado tiene la mayor probabilidad estimada.</p>
           </article>
           <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">CASA DE APUESTAS</p><h3>También en pesos, no en momios</h3></div></div>
+            <div class="panel-title"><div><p class="eyebrow">CASA DE APUESTAS</p><h3>Todo traducido a pesos y porcentajes</h3></div></div>
             <div class="payoff-grid">
               <div><span>Si apuestas</span><strong>$100</strong></div>
               <div><span>La casa devuelve</span><strong>$190</strong></div>
               <div><span>Ganancia neta</span><strong>$90</strong></div>
             </div>
-            <p class="simple-note" style="margin-top:12px">La aplicación podrá comparar ese pago con nuestra probabilidad. Así sabremos si el riesgo parece justificarse o si conviene no apostar.</p>
+            <p class="simple-note" style="margin-top:12px">La aplicación convierte el pago de la casa a una probabilidad mínima y la compara con la probabilidad Fútbol Quant.</p>
           </article>
         </div>
       </section>
 
       <section class="view" id="view-predict">
-        <div class="section-intro"><div><p class="eyebrow">PRONÓSTICO CON HISTORIAL REAL</p><h2>Selecciona un partido</h2></div><p>La primera versión usa resultados reales recientes, rendimiento como local/visitante y un modelo Poisson regularizado.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">PRONÓSTICO</p><h2>Selecciona un partido</h2></div><p>Esta pantalla calcula probabilidades antes del partido usando el historial real guardado.</p></div>
+        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes hacer:</b> elige liga, equipo local y visitante. El botón calcula Local / Empate / Visitante y guarda el análisis en Historial. Si las listas aparecen vacías, la Base de datos todavía no está cargada.</p>
         <div class="grid two align-start">
           <form class="panel form-grid" id="predictForm">
-            <div class="field span-2"><label>Liga</label><select id="leagueSelect" name="league"><option value="">Selecciona…</option></select></div>
-            <div class="field"><label>Equipo local</label><select id="homeSelect" name="home"><option value="">Selecciona…</option></select></div>
-            <div class="field"><label>Equipo visitante</label><select id="awaySelect" name="away"><option value="">Selecciona…</option></select></div>
-            <button class="primary span-2 big-action" type="submit">Calcular probabilidades</button>
+            <div class="field span-2"><label>1. Liga</label><select id="leagueSelect" name="league"><option value="">Selecciona…</option></select></div>
+            <div class="field"><label>2. Equipo local</label><select id="homeSelect" name="home"><option value="">Selecciona…</option></select></div>
+            <div class="field"><label>3. Equipo visitante</label><select id="awaySelect" name="away"><option value="">Selecciona…</option></select></div>
+            <button class="primary span-2 big-action" type="submit">4. Calcular probabilidades</button>
           </form>
-          <article class="panel" id="predictResult"><div class="empty">Selecciona los equipos para calcular un pronóstico basado en la base histórica.</div></article>
+          <article class="panel" id="predictResult"><div class="empty">Aquí aparecerán los porcentajes del partido seleccionado.</div></article>
         </div>
       </section>
 
       <section class="view" id="view-bet">
-        <div class="section-intro"><div><p class="eyebrow">SIMULADOR</p><h2>¿Qué podría pasar con tu dinero?</h2></div><p>Sin mostrar momios: indica cuánto apostarías y cuánto devolvería la casa si ganas.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">CASA DE APUESTAS</p><h2>¿Qué significa el pago de la casa?</h2></div><p>Sin mostrar momios: usamos cuánto arriesgas, cuánto te devolverían y lo convertimos a porcentaje.</p></div>
+        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes hacer:</b> coloca la probabilidad de Fútbol Quant, cuánto quieres apostar y cuánto te devolvería la casa si aciertas. El sistema te dice la ganancia neta y si el pago compensa la probabilidad.</p>
         <div class="grid two align-start">
           <form class="panel form-grid" id="betForm">
-            <div class="field"><label>Probabilidad que calculó Fútbol Quant (%)</label><input id="betProb" type="number" min="1" max="99" step="0.1" value="55"></div>
+            <div class="field"><label>Probabilidad Fútbol Quant (%)</label><input id="betProb" type="number" min="1" max="99" step="0.1" value="55"></div>
             <div class="field"><label>¿Cuánto quieres apostar? ($)</label><input id="betAmount" type="number" min="1" step="1" value="100"></div>
-            <div class="field span-2"><label>Si apuestas $100, ¿cuánto te devuelve la casa en total si ganas? ($)</label><input id="houseReturn100" type="number" min="101" step="1" value="190"></div>
-            <button class="primary span-2 big-action" type="submit">Evaluar</button>
+            <div class="field span-2"><label>Si apuestas $100, ¿cuánto devuelve la casa en total si ganas? ($)</label><input id="houseReturn100" type="number" min="101" step="1" value="190"></div>
+            <button class="primary span-2 big-action" type="submit">Calcular resultado</button>
           </form>
-          <article class="panel" id="betResult"><div class="empty">Aquí verás cuánto recibirías, cuánto ganarías neto y si el pago parece suficiente para la probabilidad estimada.</div></article>
+          <article class="panel" id="betResult"><div class="empty">Aquí verás devolución, ganancia neta y comparación de porcentajes.</div></article>
         </div>
       </section>
 
       <section class="view" id="view-progol">
-        <div class="section-intro"><div><p class="eyebrow">PROGOL</p><h2>Probabilidades L / E / V</h2></div><p>En Progol el premio final depende de la bolsa y de cuántos ganadores haya; por eso mostramos probabilidades y cobertura, no una “ganancia prometida”.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">PROGOL</p><h2>Probabilidades L / E / V</h2></div><p>El premio depende de la bolsa y del número de ganadores; por eso aquí no se promete una cantidad de premio.</p></div>
+        <p class="simple-note" style="margin-bottom:16px"><b>Qué hace:</b> muestra el porcentaje estimado de cada resultado y arma combinaciones según tu presupuesto. “Doble” cubre dos resultados; “Triple” cubre los tres.</p>
         <div class="notice danger" id="demoNotice">Cargando…</div>
         <div class="progol-controls panel compact">
           <div class="field"><label>Presupuesto ($)</label><input type="number" id="progolBudget" min="15" step="15" value="150"></div>
@@ -112,12 +127,14 @@
       </section>
 
       <section class="view" id="view-history">
-        <div class="section-intro"><div><p class="eyebrow">AUDITORÍA</p><h2>Historial de análisis</h2></div><p>Cada pronóstico queda guardado para compararlo después con el resultado real.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">HISTORIAL</p><h2>Pronósticos que ya hiciste</h2></div><p>Sirve para comprobar después si el modelo realmente acierta y está bien calibrado.</p></div>
+        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes ver:</b> fecha del análisis, partido y porcentajes que calculó Fútbol Quant en ese momento. Si no has calculado ningún partido todavía, estará vacío.</p>
         <article class="panel"><div class="panel-title"><div><h3>Últimos pronósticos</h3></div><button class="ghost" id="loadHistoryBtn">Recargar</button></div><div class="history-list" id="historyList"><div class="empty">Cargando…</div></div></article>
       </section>
 
       <section class="view" id="view-data">
-        <div class="section-intro"><div><p class="eyebrow">BASE DE DATOS</p><h2>Datos reales usados por el modelo</h2></div><p>Premier League, LaLiga y Serie A se cargan desde históricos públicos; Liga MX usa históricos de FotMob publicados en un repositorio de datos y la temporada actual disponible.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">BASE DE DATOS</p><h2>Datos reales usados por el modelo</h2></div><p>Aquí ves cuántos partidos existen realmente en Supabase. Si marca 0, el pronóstico no puede funcionar.</p></div>
+        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes ver:</b> una tarjeta por liga con número de partidos y rango de fechas. El botón carga o actualiza resultados y no duplica partidos existentes.</p>
         <div class="grid two align-start">
           <article class="panel">
             <div class="panel-title"><div><h3>Cobertura actual</h3></div></div>
@@ -126,8 +143,8 @@
           <article class="panel">
             <div class="panel-title"><div><h3>Cargar / actualizar historial</h3></div></div>
             <p class="simple-note">La carga es idempotente: si un partido ya existe, se actualiza y no se duplica.</p>
-            <button class="primary big-action" id="bootstrapBtn" style="margin-top:12px">Cargar base histórica ahora</button>
-            <div id="bootstrapStatus" class="simple-note">Todavía no se ha iniciado una carga desde esta pantalla.</div>
+            <button class="primary big-action" id="bootstrapBtn" style="margin-top:12px">Cargar / actualizar historial</button>
+            <div id="bootstrapStatus" class="simple-note">Esperando estado de la base…</div>
           </article>
         </div>
       </section>
