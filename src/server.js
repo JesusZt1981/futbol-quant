@@ -27,7 +27,7 @@ async function saveHistory(category, payload) {
 }
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, version: '1.2.0', store: store.status(), timestamp: new Date().toISOString() });
+  res.json({ ok: true, version: '1.3.0', store: store.status(), timestamp: new Date().toISOString() });
 });
 
 app.get('/api/providers/status', (req, res) => {
@@ -35,6 +35,7 @@ app.get('/api/providers/status', (req, res) => {
     apiFootball: Boolean(process.env.API_FOOTBALL_KEY),
     oddsApi: Boolean(process.env.ODDS_API_KEY),
     supabase: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
+    liveTracking: Boolean(process.env.API_FOOTBALL_KEY),
     leagues: apiFootball.LEAGUES
   });
 });
@@ -80,6 +81,53 @@ app.post('/api/predict/history', async (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+app.get('/api/live/matches', async (req, res) => {
+  try {
+    const payload = await apiFootball.liveFixtures();
+    const rows = (payload.response || []).map(x => ({
+      fixtureId: x.fixture?.id,
+      date: x.fixture?.date,
+      status: x.fixture?.status?.short,
+      minute: x.fixture?.status?.elapsed,
+      league: x.league?.name,
+      country: x.league?.country,
+      home: x.teams?.home?.name,
+      away: x.teams?.away?.name,
+      homeGoals: x.goals?.home,
+      awayGoals: x.goals?.away
+    }));
+    res.json({ enabled: true, updatedAt: new Date().toISOString(), matches: rows });
+  } catch (error) {
+    res.status(503).json({ enabled: false, error: error.message, matches: [] });
+  }
+});
+
+app.get('/api/live/match/:fixtureId', async (req, res) => {
+  try {
+    const fixtureId = req.params.fixtureId;
+    const [fixturePayload, oddsPayload] = await Promise.all([
+      apiFootball.request('/fixtures', { id: fixtureId }),
+      apiFootball.liveOdds(fixtureId).catch(() => ({ response: [] }))
+    ]);
+    const x = fixturePayload.response?.[0];
+    if (!x) return res.status(404).json({ error: 'Partido no encontrado' });
+    const market = apiFootball.extractLiveMarketPercentages(oddsPayload);
+    const snapshot = {
+      fixtureId: Number(fixtureId),
+      capturedAt: new Date().toISOString(),
+      minute: x.fixture?.status?.elapsed,
+      status: x.fixture?.status?.short,
+      league: x.league?.name,
+      home: x.teams?.home?.name,
+      away: x.teams?.away?.name,
+      score: { home: x.goals?.home, away: x.goals?.away },
+      market
+    };
+    await saveHistory('live_market_snapshots', snapshot);
+    res.json(snapshot);
+  } catch (error) { res.status(503).json({ error: error.message }); }
+});
+
 app.get('/api/demo/progol', (req, res) => {
   const enriched = demo.matches.map((m) => ({ ...m, coverage: coverageRecommendation(m) }));
   res.json({ ...demo, matches: enriched });
@@ -97,7 +145,7 @@ app.post('/api/model/poisson', async (req, res) => {
       markets,
       fairOdds: { L: fairOdds(markets.home), E: fairOdds(markets.draw), V: fairOdds(markets.away) }
     };
-    const historySaved = await saveHistory('model_runs', { model: 'poisson', version: '1.2.0', input: req.body, output: result });
+    const historySaved = await saveHistory('model_runs', { model: 'poisson', version: '1.3.0', input: req.body, output: result });
     res.json({ ...result, historySaved, historyBackend: store.status().backend });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -211,4 +259,21 @@ app.post('/api/metrics/backtest', async (req, res) => {
 
 app.use((req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
-app.listen(PORT, () => console.log(`Fútbol Quant escuchando en http://localhost:${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Fútbol Quant escuchando en http://localhost:${PORT}`);
+  if (process.env.AUTO_BOOTSTRAP_HISTORY === '1') {
+    try {
+      const summary = await store.dataSummary();
+      const total = (summary || []).reduce((s, r) => s + Number(r.finished || 0), 0);
+      if (!total) {
+        console.log('[bootstrap] Base vacía: cargando historial real…');
+        const result = await store.bootstrap('all');
+        console.log(`[bootstrap] Historial cargado: ${result.total_rows || 0} registros`);
+      } else {
+        console.log(`[bootstrap] Base existente: ${total} partidos`);
+      }
+    } catch (error) {
+      console.error('[bootstrap]', error.message);
+    }
+  }
+});
