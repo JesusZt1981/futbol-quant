@@ -1,153 +1,189 @@
 'use strict';
 
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => [...document.querySelectorAll(sel)];
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 let progolDemo = null;
+let dataSummary = [];
 
-function pct(v, digits = 1) { return `${(Number(v) * 100).toFixed(digits)}%`; }
-function money(v) { return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:2 }).format(Number(v || 0)); }
-function odds(v) { return Number(v).toFixed(2); }
+function pct(v, d=1){ return `${(Number(v)*100).toFixed(d)}%`; }
+function money(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2}).format(Number(v||0)); }
+function fmtDate(v){ if(!v)return '—'; return new Date(v).toLocaleDateString('es-MX',{year:'numeric',month:'short',day:'numeric'}); }
 
-async function api(url, options) {
-  if (window.location.protocol === 'file:') {
-    throw new Error('Vista local: el diseño funciona, pero inicia npm start para activar el motor y los datos.');
+async function api(url, options={}){
+  const r = await fetch(url, options);
+  const j = await r.json();
+  if(!r.ok) throw new Error(j.error || 'Error de servidor');
+  return j;
+}
+
+function setView(view){
+  $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  $$('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${view}`));
+  const b=$(`.nav-btn[data-view="${view}"]`);
+  $('#pageTitle').textContent=b?.textContent||'Fútbol Quant';
+  if(view==='history') loadHistory();
+  if(view==='data') loadDataSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$$('.nav-btn').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+
+async function health(){
+  try{
+    const d=await api('/api/health');
+    $('#healthDot').className='dot ok';
+    $('#healthText').textContent=`Base persistente · v${d.version}`;
+    $('#appVersion').textContent=`v${d.version}`;
+  }catch{
+    $('#healthDot').className='dot';
+    $('#healthText').textContent='Sin conexión';
   }
-  const response = await fetch(url, options);
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error || 'Error de servidor');
-  return json;
 }
 
-function setView(view) {
-  $$('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
-  const btn = $(`.nav-btn[data-view="${view}"]`);
-  $('#pageTitle').textContent = btn?.textContent || 'Fútbol Quant';
-  window.scrollTo({ top:0, behavior:'smooth' });
+function renderDataSummary(rows){
+  dataSummary=rows||[];
+  const total=dataSummary.reduce((s,r)=>s+Number(r.finished||0),0);
+  $('#totalMatches').textContent=total.toLocaleString('es-MX');
+  $('#totalLeagues').textContent=dataSummary.length;
+  const names={liga_mx:'Liga MX',laliga:'LaLiga',serie_a:'Serie A',premier_league:'Premier League'};
+  $('#dataSummary').innerHTML=dataSummary.length?dataSummary.map(r=>`
+    <div class="history-item">
+      <b>${names[r.league_key]||r.competition||r.league_key}</b>
+      <small>${Number(r.finished||0).toLocaleString('es-MX')} partidos · ${fmtDate(r.from)} a ${fmtDate(r.to)}</small>
+      <span class="badge-ok">Listo</span>
+    </div>`).join(''):'<div class="empty">La base todavía está vacía.</div>';
+  const league=$('#leagueSelect');
+  const current=league.value;
+  league.innerHTML='<option value="">Selecciona…</option>'+dataSummary.map(r=>`<option value="${r.league_key}">${names[r.league_key]||r.competition}</option>`).join('');
+  if(dataSummary.some(r=>r.league_key===current)) league.value=current;
 }
 
-$$('.nav-btn').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
-
-async function health() {
-  try {
-    const data = await api('/api/health');
-    $('#healthDot').className = 'dot ok';
-    $('#healthText').textContent = `${data.store.backend} · v${data.version}`;
-  } catch {
-    $('#healthDot').className = 'dot';
-    $('#healthText').textContent = window.location.protocol === 'file:' ? 'Vista local · inicia npm start' : 'Sin conexión';
-  }
-}
-
-function probBars(m) {
-  const rows = [['L',m.home],['E',m.draw],['V',m.away]];
-  return rows.map(([k,p]) => `<div class="bar-row"><b>${k}</b><div class="bar"><i style="width:${p*100}%"></i></div><span>${pct(p)}</span></div>`).join('');
-}
-
-$('#modelForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const f = new FormData(e.currentTarget);
-  const payload = {
-    homeXg: Number(f.get('homeXg')), awayXg: Number(f.get('awayXg')),
-    features: {
-      home: { restDaysDelta:Number(f.get('homeRest')), injuryImpact:Number(f.get('homeInj')), travelFatigue:Number(f.get('homeTravel')), lineupStrengthDelta:Number(f.get('homeXi')) },
-      away: { restDaysDelta:Number(f.get('awayRest')), injuryImpact:Number(f.get('awayInj')), travelFatigue:Number(f.get('awayTravel')), lineupStrengthDelta:Number(f.get('awayXi')) }
+async function loadDataSummary(autoBootstrap=true){
+  try{
+    let rows=await api('/api/data/summary');
+    renderDataSummary(rows);
+    const total=(rows||[]).reduce((s,r)=>s+Number(r.finished||0),0);
+    if(autoBootstrap && total===0){
+      $('#bootstrapStatus').textContent='La base está vacía. Iniciando carga histórica automática…';
+      await bootstrapData();
     }
-  };
-  try {
-    const r = await api('/api/model/poisson', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload) });
-    $('#modelResult').innerHTML = `
-      <div class="panel-title"><div><p class="eyebrow">RESULTADO</p><h3>Probabilidades modeladas</h3></div></div>
-      ${probBars(r.markets)}
-      <div class="result-grid" style="margin-top:16px">
-        <div class="result-stat"><span>xG ajustado local</span><strong>${r.adjustedXg.home.toFixed(2)}</strong><small class="subtle">Δ ${r.adjustedXg.adjustments.home>=0?'+':''}${r.adjustedXg.adjustments.home.toFixed(2)}</small></div>
-        <div class="result-stat"><span>xG ajustado visita</span><strong>${r.adjustedXg.away.toFixed(2)}</strong><small class="subtle">Δ ${r.adjustedXg.adjustments.away>=0?'+':''}${r.adjustedXg.adjustments.away.toFixed(2)}</small></div>
-        <div class="result-stat"><span>Total xG</span><strong>${r.markets.expectedGoals.total.toFixed(2)}</strong><small class="subtle">Over 2.5 ${pct(r.markets.over25)}</small></div>
-      </div>
-      <h4 style="margin:18px 0 8px">Cuotas justas</h4>
-      <div class="triplet"><span class="chip">L ${odds(r.fairOdds.L)}</span><span class="chip">E ${odds(r.fairOdds.E)}</span><span class="chip">V ${odds(r.fairOdds.V)}</span><span class="chip">BTTS Sí ${pct(r.markets.bttsYes)}</span></div>
-      <p class="subtle" style="margin-top:14px">Este cálculo es un componente del ensemble, no el pronóstico final. Los pesos contextuales deben recalibrarse con backtesting.</p>`;
-  } catch (err) { $('#modelResult').innerHTML = `<p class="danger-text">${err.message}</p>`; }
+  }catch(e){ $('#dataSummary').innerHTML=`<div class="simple-note">${e.message}</div>`; }
+}
+
+async function bootstrapData(){
+  const btn=$('#bootstrapBtn');
+  if(btn){btn.disabled=true;btn.textContent='Cargando historial…';}
+  $('#bootstrapStatus').textContent='Descargando y guardando resultados reales. Puede tardar unos segundos…';
+  try{
+    const r=await api('/api/data/bootstrap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'all'})});
+    $('#bootstrapStatus').innerHTML=`<span class="badge-ok">Carga terminada.</span> Base con ${Number(r.total_rows||0).toLocaleString('es-MX')} registros.`;
+    const rows=await api('/api/data/summary');
+    renderDataSummary(rows);
+  }catch(e){
+    $('#bootstrapStatus').innerHTML=`<span class="badge-warn">No se pudo completar:</span> ${e.message}`;
+  }finally{if(btn){btn.disabled=false;btn.textContent='Cargar / actualizar historial';}}
+}
+$('#bootstrapBtn').addEventListener('click',bootstrapData);
+
+$('#leagueSelect').addEventListener('change',async(e)=>{
+  const league=e.target.value;
+  $('#homeSelect').innerHTML='<option value="">Cargando…</option>';
+  $('#awaySelect').innerHTML='<option value="">Cargando…</option>';
+  if(!league)return;
+  try{
+    const teams=await api(`/api/data/teams/${encodeURIComponent(league)}`);
+    const opts='<option value="">Selecciona…</option>'+teams.map(t=>`<option>${t}</option>`).join('');
+    $('#homeSelect').innerHTML=opts; $('#awaySelect').innerHTML=opts;
+  }catch(e){ $('#homeSelect').innerHTML='<option value="">Error</option>'; $('#awaySelect').innerHTML='<option value="">Error</option>'; }
 });
 
-$('#riskForm').addEventListener('submit', async (e) => {
+function probCards(p){
+  const vals=[['Gana local',p.L],['Empate',p.E],['Gana visitante',p.V]];
+  const best=Math.max(...vals.map(x=>x[1]));
+  return `<div class="prob-grid">${vals.map(([n,v])=>`<div class="prob-card ${v===best?'best':''}"><span>${n}</span><strong>${pct(v)}</strong></div>`).join('')}</div>`;
+}
+
+$('#predictForm').addEventListener('submit',async(e)=>{
   e.preventDefault();
-  const f = new FormData(e.currentTarget);
-  const payload = {
-    bankroll:Number(f.get('bankroll')), decimalOdds:Number(f.get('decimalOdds')), modelProbability:Number(f.get('prob'))/100,
-    kellyMultiplier:Number(f.get('kelly')), dataQuality:Number(f.get('quality'))/100, lineupConfidence:Number(f.get('lineup'))/100
-  };
-  try {
-    const r = await api('/api/risk/stake', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload) });
-    $('#riskResult').innerHTML = `
-      <div class="panel-title"><div><p class="eyebrow">DECISIÓN</p><h3 class="${r.bet?'good-text':'warn-text'}">${r.bet?'APUESTA CANDIDATA':'NO APOSTAR'}</h3></div></div>
-      <div class="result-grid">
-        <div class="result-stat"><span>Edge bruto</span><strong>${pct(r.edge)}</strong><small class="subtle">modelo − implícita sin quitar vig individual</small></div>
-        <div class="result-stat"><span>EV por $1</span><strong>${pct(r.ev)}</strong><small class="subtle">valor esperado</small></div>
-        <div class="result-stat"><span>Stake</span><strong>${money(r.stake)}</strong><small class="subtle">${pct(r.stakePct)} del bankroll</small></div>
+  const league=$('#leagueSelect').value, home=$('#homeSelect').value, away=$('#awaySelect').value;
+  $('#predictResult').innerHTML='<div class="empty">Calculando con el historial…</div>';
+  try{
+    const r=await api('/api/predict/history',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({league,home,away})});
+    const p=r.probabilities; const best=Math.max(p.L,p.E,p.V);
+    $('#betProb').value=(best*100).toFixed(1);
+    $('#predictResult').innerHTML=`
+      <div class="panel-title"><div><p class="eyebrow">RESULTADO</p><h3>${home} vs ${away}</h3></div><span class="pill">${r.sample.league} partidos de liga</span></div>
+      ${probCards(p)}
+      <div class="payoff-grid">
+        <div><span>Goles esperados local</span><strong>${Number(r.goals.home).toFixed(2)}</strong></div>
+        <div><span>Goles esperados visitante</span><strong>${Number(r.goals.away).toFixed(2)}</strong></div>
+        <div><span>Más de 2.5 goles</span><strong>${pct(r.over25)}</strong></div>
       </div>
-      <p class="subtle" style="margin-top:14px">Kelly completo: ${pct(r.fullKelly)}. El sistema aplica Kelly fraccionado, calidad de datos y tope máximo.</p>`;
-  } catch (err) { $('#riskResult').innerHTML = `<p class="danger-text">${err.message}</p>`; }
+      <p class="simple-note" style="margin-top:12px">Base usada: ${r.sample.home} partidos recientes del local en casa y ${r.sample.away} del visitante fuera. ${r.methodology}</p>
+      <p class="simple-note" style="margin-top:10px">El resultado con mayor porcentaje no significa apuesta recomendada. Para eso hay que compararlo con lo que pague la casa.</p>`;
+  }catch(err){ $('#predictResult').innerHTML=`<div class="simple-note">${err.message}</div>`; }
 });
 
-function triplet(obj, bestKey) {
-  return `<div class="triplet">${['L','E','V'].map(k=>`<span class="chip ${k===bestKey?'best':''}">${k} ${pct(obj[k])}</span>`).join('')}</div>`;
-}
-
-function bestKey(obj) { return ['L','E','V'].sort((a,b)=>obj[b]-obj[a])[0]; }
-
-function renderProgol() {
-  if (!progolDemo) return;
-  $('#demoNotice').textContent = progolDemo.notice;
-  $('#progolBody').innerHTML = progolDemo.matches.map(m => {
-    const values = ['L','E','V'].map(k=>({k,ratio:m.model[k]/Math.max(m.public[k],.005)})).sort((a,b)=>b.ratio-a.ratio);
-    const hot = values[0];
-    return `<tr>
-      <td>${m.n}</td><td><b>${m.home}</b><span class="subtle"> vs </span><b>${m.away}</b></td>
-      <td>${triplet(m.model,bestKey(m.model))}</td><td>${triplet(m.public,bestKey(m.public))}</td>
-      <td><span class="value-chip ${hot.ratio>1.12?'hot':''}">${hot.k} ×${hot.ratio.toFixed(2)}</span></td>
-      <td><span class="chip">${m.coverage.type}: ${m.coverage.picks.join('')}</span><div class="subtle">cubre ${pct(m.coverage.coverage)}</div></td>
-    </tr>`;
-  }).join('');
-}
-
-async function loadProgol() {
-  try { progolDemo = await api('/api/demo/progol'); renderProgol(); }
-  catch (err) { $('#demoNotice').textContent = err.message; }
-}
-
-$('#optimizeBtn').addEventListener('click', async () => {
-  if (!progolDemo) return;
-  try {
-    const r = await api('/api/progol/optimize', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ matches:progolDemo.matches, budget:Number($('#progolBudget').value), mode:$('#progolMode').value }) });
-    $('#progolResult').innerHTML = `
-      <div class="panel-title"><div><p class="eyebrow">PORTAFOLIO DE LÍNEAS</p><h3>${r.lines} líneas · ${money(r.spent)}</h3></div><span class="pill">${r.mode}</span></div>
-      <div class="line-list">${r.selections.map(s=>`<div class="line-item"><b>#${s.rank}</b><span class="picks">${s.picks.join(' · ')}</span><small>P modelo ${pct(s.probabilityModel,3)}</small><small>Valor ×${s.valueRatio.toFixed(2)}</small></div>`).join('')}</div>
-      <p class="subtle" style="margin-top:12px">“Popularidad” es un proxy multiplicativo. El premio real depende del pool, número de ganadores y reglas vigentes; no debe interpretarse como pago garantizado.</p>`;
-  } catch (err) { $('#progolResult').innerHTML = `<p class="danger-text">${err.message}</p>`; }
+$('#betForm').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const probability=Number($('#betProb').value)/100;
+  const amount=Number($('#betAmount').value);
+  const return100=Number($('#houseReturn100').value);
+  const multiplier=return100/100;
+  const totalReturn=amount*multiplier;
+  const netProfit=totalReturn-amount;
+  const implied=1/multiplier;
+  const edge=probability-implied;
+  const ev=probability*netProfit-(1-probability)*amount;
+  let verdict='Pago poco atractivo para esta probabilidad';
+  let cls='badge-warn';
+  if(edge>=0.05){verdict='El pago parece favorable frente a nuestra probabilidad';cls='badge-ok';}
+  else if(edge>=0.02){verdict='Hay una ventaja pequeña; requiere cautela';cls='badge-warn';}
+  $('#betResult').innerHTML=`
+    <div class="panel-title"><div><p class="eyebrow">SIMULACIÓN</p><h3 class="${cls}">${verdict}</h3></div></div>
+    <div class="payoff-grid">
+      <div><span>Si apuestas</span><strong>${money(amount)}</strong></div>
+      <div><span>Recibirías si ganas</span><strong>${money(totalReturn)}</strong></div>
+      <div><span>Ganancia neta</span><strong>${money(netProfit)}</strong></div>
+    </div>
+    <div class="prob-grid">
+      <div class="prob-card"><span>Probabilidad FQ</span><strong>${pct(probability)}</strong></div>
+      <div class="prob-card"><span>Probabilidad mínima que exige ese pago</span><strong>${pct(implied)}</strong></div>
+      <div class="prob-card ${edge>0?'best':''}"><span>Diferencia</span><strong>${edge>=0?'+':''}${pct(edge)}</strong></div>
+    </div>
+    <p class="simple-note">Valor esperado aproximado por esta apuesta: ${money(ev)}. Es una estimación matemática, no una garantía de ganancia.</p>`;
 });
 
-$('#backtestBtn').addEventListener('click', async () => {
-  try {
-    const payload = JSON.parse($('#backtestInput').value);
-    const r = await api('/api/metrics/backtest', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload) });
-    $('#backtestResult').innerHTML = `<b>Predicciones:</b> ${r.nPredictions} · <b>Brier:</b> ${r.brier?.toFixed(4) ?? '—'} · <b>Log loss:</b> ${r.logLoss?.toFixed(4) ?? '—'} · <b>ROI:</b> ${r.roi==null?'—':pct(r.roi)} · <b>Acierto apuestas:</b> ${r.hitRate==null?'—':pct(r.hitRate)}`;
-  } catch (err) { $('#backtestResult').innerHTML = `<span class="danger-text">${err.message}</span>`; }
-});
+function triplet(obj){return `<div class="triplet">${['L','E','V'].map(k=>`<span class="chip">${k} ${pct(obj[k])}</span>`).join('')}</div>`;}
 
-async function providers() {
-  try {
-    const p = await api('/api/providers/status');
-    const rows = [
-      ['API-Football', p.apiFootball, 'partidos, stats, lesiones, jugadores, alineaciones'],
-      ['The Odds API', p.oddsApi, 'cuotas y mercados multi-bookmaker'],
-      ['Supabase', p.supabase, 'persistencia de snapshots y backtesting'],
-      ['Progol oficial', false, 'porcentajes: integración manual/adapter pendiente']
-    ];
-    $('#providerStatus').innerHTML = rows.map(([name,on,desc])=>`<div class="provider-row"><div><b>${name}</b><div class="subtle">${desc}</div></div><span class="status ${on?'on':'off'}">${on?'Conectado':'Configurar'}</span></div>`).join('');
-  } catch (err) { $('#providerStatus').innerHTML = `<span class="danger-text">${err.message}</span>`; }
+async function loadProgol(){
+  try{
+    progolDemo=await api('/api/demo/progol');
+    $('#demoNotice').textContent='Este Progol todavía usa datos de demostración para algunos partidos. No usarlo como recomendación real hasta que esos encuentros estén enlazados al historial.';
+    $('#progolBody').innerHTML=progolDemo.matches.map(m=>`<tr><td>${m.n}</td><td><b>${m.home}</b><span class="subtle"> vs </span><b>${m.away}</b></td><td>${triplet(m.model)}</td><td>${triplet(m.public)}</td><td><span class="chip">${m.coverage.type}: ${m.coverage.picks.join('')}</span></td></tr>`).join('');
+  }catch(e){$('#demoNotice').textContent=e.message;}
 }
 
-$('#refreshBtn').addEventListener('click', () => { health(); loadProgol(); providers(); });
+$('#optimizeBtn').addEventListener('click',async()=>{
+  if(!progolDemo)return;
+  try{
+    const r=await api('/api/progol/optimize',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({matches:progolDemo.matches,budget:Number($('#progolBudget').value),mode:$('#progolMode').value})});
+    $('#progolResult').innerHTML=`<h3>${r.lines} combinaciones · ${money(r.spent)}</h3><div class="line-list">${r.selections.map(s=>`<div class="line-item"><b>#${s.rank}</b><span class="picks">${s.picks.join(' · ')}</span><small>Probabilidad conjunta ${pct(s.probabilityModel,3)}</small></div>`).join('')}</div><p class="simple-note" style="margin-top:12px">El premio de Progol no puede calcularse por adelantado: depende de la bolsa y de cuántos ganadores haya.</p>`;
+  }catch(e){$('#progolResult').innerHTML=`<div class="simple-note">${e.message}</div>`;}
+});
 
-health(); loadProgol(); providers();
+async function loadHistory(){
+  try{
+    const rows=await api('/api/history/historical_predictions?limit=30');
+    $('#historyList').innerHTML=rows.length?rows.map(r=>{
+      const o=r.output||{}, p=o.probabilities||{};
+      return `<div class="history-item"><small>${new Date(r.created_at).toLocaleString('es-MX')}</small><div><b>${o.home||'—'} vs ${o.away||'—'}</b><br><small>L ${p.L?pct(p.L):'—'} · E ${p.E?pct(p.E):'—'} · V ${p.V?pct(p.V):'—'}</small></div><span class="badge-ok">Guardado</span></div>`;
+    }).join(''):'<div class="empty">Aún no hay pronósticos guardados.</div>';
+  }catch(e){$('#historyList').innerHTML=`<div class="simple-note">${e.message}</div>`;}
+}
+$('#loadHistoryBtn').addEventListener('click',loadHistory);
+
+$('#refreshBtn').addEventListener('click',()=>{health();loadDataSummary(false);loadProgol();});
+
+health();
+loadDataSummary(true);
+loadProgol();
