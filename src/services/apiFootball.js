@@ -23,9 +23,57 @@ const LEAGUES = {
   liga_mx: { id: 262, name: 'Liga MX', country: 'Mexico' }
 };
 
-async function fixtures({ league, season, from, to, next }) {
+async function fixtures({ league, season, from, to, next, date, live }) {
   const leagueId = LEAGUES[league]?.id || league;
-  return request('/fixtures', { league: leagueId, season, from, to, next });
+  return request('/fixtures', { league: leagueId, season, from, to, next, date, live });
+}
+
+async function liveFixtures() {
+  return request('/fixtures', { live: 'all' });
+}
+
+async function liveOdds(fixtureId) {
+  return request('/odds/live', { fixture: fixtureId });
+}
+
+function normalizeThreeWay(values = []) {
+  const find = (...names) => values.find(v => names.includes(String(v.value || '').toLowerCase()));
+  const h = find('home','1');
+  const d = find('draw','x');
+  const a = find('away','2');
+  if (!h || !d || !a) return null;
+  const odds = [Number(h.odd), Number(d.odd), Number(a.odd)];
+  if (odds.some(o => !(o > 1))) return null;
+  const raw = odds.map(o => 1 / o);
+  const sum = raw.reduce((x,y)=>x+y,0);
+  return {
+    L: raw[0] / sum,
+    E: raw[1] / sum,
+    V: raw[2] / sum,
+    decimal: { L: odds[0], E: odds[1], V: odds[2] }
+  };
+}
+
+function extractLiveMarketPercentages(payload) {
+  const rows = payload?.response || [];
+  const markets = [];
+  for (const event of rows) {
+    for (const bookmaker of event.bookmakers || []) {
+      for (const bet of bookmaker.bets || []) {
+        const name = String(bet.name || '').toLowerCase();
+        if (!name.includes('match winner') && !name.includes('winner') && !name.includes('1x2')) continue;
+        const normalized = normalizeThreeWay(bet.values || []);
+        if (normalized) markets.push({ bookmaker: bookmaker.name || String(bookmaker.id), ...normalized });
+      }
+    }
+  }
+  if (!markets.length) return { consensus: null, bookmakers: [] };
+  const consensus = {
+    L: markets.reduce((s,m)=>s+m.L,0)/markets.length,
+    E: markets.reduce((s,m)=>s+m.E,0)/markets.length,
+    V: markets.reduce((s,m)=>s+m.V,0)/markets.length
+  };
+  return { consensus, bookmakers: markets };
 }
 
 async function fixtureBundle(fixtureId) {
@@ -48,4 +96,4 @@ async function fixtureBundle(fixtureId) {
   };
 }
 
-module.exports = { request, LEAGUES, fixtures, fixtureBundle };
+module.exports = { request, LEAGUES, fixtures, liveFixtures, liveOdds, extractLiveMarketPercentages, fixtureBundle };
