@@ -1,36 +1,41 @@
 'use strict';
 
-let supabase = null;
 const memory = { snapshots: [], predictions: [], bets: [] };
+let client = null;
 
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
   const { createClient } = require('@supabase/supabase-js');
-  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
 
 async function insert(table, row) {
-  if (!supabase) {
+  if (!client) {
     const item = { id: crypto.randomUUID(), created_at: new Date().toISOString(), ...row };
     memory[table] = memory[table] || [];
     memory[table].push(item);
     return item;
   }
-  const { data, error } = await supabase.from(table).insert(row).select().single();
+  const { data, error } = await client.functions.invoke('futbol-quant-history', {
+    body: { category: table, payload: row, observed_at: row.observed_at || new Date().toISOString() }
+  });
   if (error) throw error;
   return data;
 }
 
 async function list(table, limit = 100) {
-  if (!supabase) return (memory[table] || []).slice(-limit).reverse();
-  const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false }).limit(limit);
+  if (!client) return (memory[table] || []).slice(-limit).reverse();
+  const { data, error } = await client.functions.invoke('futbol-quant-history', {
+    method: 'GET',
+    query: { category: table, limit: String(limit) }
+  });
   if (error) throw error;
-  return data;
+  return (data || []).map((r) => ({ id: r.id, created_at: r.created_at, observed_at: r.observed_at, ...(r.payload || {}) }));
 }
 
 function status() {
-  return { persistent: Boolean(supabase), backend: supabase ? 'supabase' : 'memory' };
+  return { persistent: Boolean(client), backend: client ? 'supabase-edge' : 'memory' };
 }
 
 module.exports = { insert, list, status };
