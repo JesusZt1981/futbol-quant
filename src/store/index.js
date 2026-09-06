@@ -12,7 +12,10 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
 
 async function invoke(functionName, body) {
   if (!client) throw new Error('Supabase no está conectado');
-  const { data, error } = await client.functions.invoke(functionName, { body });
+  const { data, error } = await client.functions.invoke(functionName, {
+    body,
+    headers: { 'x-fq-key': process.env.SUPABASE_ANON_KEY }
+  });
   if (error) throw error;
   if (data && data.ok === false) throw new Error(data.error || 'Error de Supabase');
   return data;
