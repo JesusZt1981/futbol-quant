@@ -27,7 +27,7 @@ async function saveHistory(category, payload) {
 }
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, version: '1.3.0', store: store.status(), timestamp: new Date().toISOString() });
+  res.json({ ok: true, version: '1.3.1', store: store.status(), timestamp: new Date().toISOString() });
 });
 
 app.get('/api/providers/status', (req, res) => {
@@ -41,7 +41,7 @@ app.get('/api/providers/status', (req, res) => {
 });
 
 app.post('/api/data/bootstrap', async (req, res) => {
-  try { res.json(await store.bootstrap(req.body?.mode || 'all')); }
+  try { res.json(await store.bootstrap(req.body?.mode || 'europe')); }
   catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -64,9 +64,12 @@ app.post('/api/predict/history', async (req, res) => {
 
     const input = await store.predictionInput(league, home, away);
     const markets = deriveMarkets(input.homeXg, input.awayXg);
+    const probabilities = { L: markets.home, E: markets.draw, V: markets.away };
+    const predictedOutcome = Object.entries(probabilities).sort((a,b)=>b[1]-a[1])[0][0];
     const result = {
       league, home, away,
-      probabilities: { L: markets.home, E: markets.draw, V: markets.away },
+      probabilities,
+      predictedOutcome,
       goals: { home: input.homeXg, away: input.awayXg, total: markets.expectedGoals.total },
       over25: markets.over25,
       btts: markets.bttsYes,
@@ -76,12 +79,51 @@ app.post('/api/predict/history', async (req, res) => {
       methodology: input.methodology,
       dataSource: 'Historial real guardado en Supabase'
     };
-    const historySaved = await saveHistory('historical_predictions', { input: req.body, output: result });
-    res.json({ ...result, historySaved });
+
+    let audit = null;
+    try {
+      audit = await store.savePredictionAudit({
+        league_key: league,
+        competition: req.body.competition || null,
+        fixture_id: req.body.fixtureId ? String(req.body.fixtureId) : null,
+        kickoff: req.body.kickoff || null,
+        home_team: home,
+        away_team: away,
+        p_home: probabilities.L,
+        p_draw: probabilities.E,
+        p_away: probabilities.V,
+        predicted_outcome: predictedOutcome,
+        model_version: '1.3.1',
+        details: { sample: input.sample, goals: result.goals, over25: result.over25, btts: result.btts }
+      });
+    } catch (auditError) {
+      console.error('[prediction-audit]', auditError.message);
+    }
+
+    const historySaved = await saveHistory('historical_predictions', { input: req.body, output: result, auditId: audit?.id || null });
+    res.json({ ...result, historySaved, auditId: audit?.id || null, auditStatus: audit ? 'pending' : 'not_saved' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+app.get('/api/history/predictions-audit', async (req, res) => {
+  try { res.json(await store.listPredictionAudit(Number(req.query.limit || 100))); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.patch('/api/history/predictions-audit/:id/result', async (req, res) => {
+  try {
+    const { homeGoals, awayGoals } = req.body || {};
+    if (!Number.isFinite(Number(homeGoals)) || !Number.isFinite(Number(awayGoals))) {
+      return res.status(400).json({ error: 'Ingresa los goles finales de local y visitante' });
+    }
+    res.json(await store.settlePredictionAudit(req.params.id, homeGoals, awayGoals));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 app.get('/api/live/matches', async (req, res) => {
+  if (!process.env.API_FOOTBALL_KEY) {
+    return res.json({ enabled: false, reason: 'API-Football todavía no está configurado', updatedAt: new Date().toISOString(), matches: [] });
+  }
   try {
     const payload = await apiFootball.liveFixtures();
     const rows = (payload.response || []).map(x => ({
@@ -98,11 +140,12 @@ app.get('/api/live/matches', async (req, res) => {
     }));
     res.json({ enabled: true, updatedAt: new Date().toISOString(), matches: rows });
   } catch (error) {
-    res.status(503).json({ enabled: false, error: error.message, matches: [] });
+    res.json({ enabled: false, reason: error.message, updatedAt: new Date().toISOString(), matches: [] });
   }
 });
 
 app.get('/api/live/match/:fixtureId', async (req, res) => {
+  if (!process.env.API_FOOTBALL_KEY) return res.status(503).json({ error: 'API-Football todavía no está configurado' });
   try {
     const fixtureId = req.params.fixtureId;
     const [fixturePayload, oddsPayload] = await Promise.all([
@@ -133,6 +176,19 @@ app.get('/api/demo/progol', (req, res) => {
   res.json({ ...demo, matches: enriched });
 });
 
+app.post('/api/progol/optimize', async (req, res) => {
+  try {
+    const result = optimizeProgol({
+      matches: req.body.matches,
+      budget: Number(req.body.budget),
+      lineCost: Number(req.body.lineCost || process.env.PROGOL_LINE_COST || 15),
+      mode: req.body.mode || 'balanced'
+    });
+    const historySaved = await saveHistory('progol_runs', { input: req.body, output: result });
+    res.json({ ...result, historySaved });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
 app.post('/api/model/poisson', async (req, res) => {
   try {
     const baseHomeXg = Number(req.body.homeXg);
@@ -140,12 +196,8 @@ app.post('/api/model/poisson', async (req, res) => {
     if (!(baseHomeXg >= 0) || !(baseAwayXg >= 0)) return res.status(400).json({ error: 'xG inválido' });
     const adjusted = adjustedXg(baseHomeXg, baseAwayXg, req.body.features || {});
     const markets = deriveMarkets(adjusted.home, adjusted.away);
-    const result = {
-      adjustedXg: adjusted,
-      markets,
-      fairOdds: { L: fairOdds(markets.home), E: fairOdds(markets.draw), V: fairOdds(markets.away) }
-    };
-    const historySaved = await saveHistory('model_runs', { model: 'poisson', version: '1.3.0', input: req.body, output: result });
+    const result = { adjustedXg: adjusted, markets, fairOdds: { L: fairOdds(markets.home), E: fairOdds(markets.draw), V: fairOdds(markets.away) } };
+    const historySaved = await saveHistory('model_runs', { model: 'poisson', version: '1.3.1', input: req.body, output: result });
     res.json({ ...result, historySaved, historyBackend: store.status().backend });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -163,14 +215,12 @@ app.post('/api/market/no-vig', async (req, res) => {
 app.post('/api/risk/stake', async (req, res) => {
   try {
     const result = stakeRecommendation({
-      modelProbability: Number(req.body.modelProbability),
-      decimalOdds: Number(req.body.decimalOdds),
+      modelProbability: Number(req.body.modelProbability), decimalOdds: Number(req.body.decimalOdds),
       bankroll: Number(req.body.bankroll || process.env.DEFAULT_BANKROLL || 10000),
       kellyMultiplier: Number(req.body.kellyMultiplier || process.env.KELLY_FRACTION || 0.25),
       maxStakePct: Number(req.body.maxStakePct || process.env.MAX_STAKE_PCT || 0.02),
       minEdgePct: Number(req.body.minEdgePct || process.env.MIN_EDGE_PCT || 0.03),
-      dataQuality: Number(req.body.dataQuality ?? 1),
-      lineupConfidence: Number(req.body.lineupConfidence ?? 1)
+      dataQuality: Number(req.body.dataQuality ?? 1), lineupConfidence: Number(req.body.lineupConfidence ?? 1)
     });
     const historySaved = await saveHistory('risk_runs', { type: 'stake', input: req.body, output: result });
     res.json({ ...result, historySaved });
@@ -178,42 +228,22 @@ app.post('/api/risk/stake', async (req, res) => {
 });
 
 app.post('/api/risk/match', async (req, res) => {
-  try {
-    const score = matchRiskScore(req.body);
-    const result = { score, label: riskLabel(score) };
-    const historySaved = await saveHistory('risk_runs', { type: 'match', input: req.body, output: result });
-    res.json({ ...result, historySaved });
-  } catch (error) { res.status(400).json({ error: error.message }); }
-});
-
-app.post('/api/progol/optimize', async (req, res) => {
-  try {
-    const result = optimizeProgol({
-      matches: req.body.matches,
-      budget: Number(req.body.budget),
-      lineCost: Number(req.body.lineCost || process.env.PROGOL_LINE_COST || 15),
-      mode: req.body.mode || 'balanced'
-    });
-    const historySaved = await saveHistory('progol_runs', { input: req.body, output: result });
-    res.json({ ...result, historySaved });
-  } catch (error) { res.status(400).json({ error: error.message }); }
+  try { const score = matchRiskScore(req.body); const result = { score, label: riskLabel(score) }; const historySaved = await saveHistory('risk_runs', { type: 'match', input: req.body, output: result }); res.json({ ...result, historySaved }); }
+  catch (error) { res.status(400).json({ error: error.message }); }
 });
 
 app.get('/api/football/fixtures', async (req, res) => {
   try { res.json(await apiFootball.fixtures(req.query)); }
   catch (error) { res.status(502).json({ error: error.message }); }
 });
-
 app.get('/api/football/fixture/:id/bundle', async (req, res) => {
   try { res.json(await apiFootball.fixtureBundle(req.params.id)); }
   catch (error) { res.status(502).json({ error: error.message }); }
 });
-
 app.get('/api/odds/sports', async (req, res) => {
   try { res.json(await oddsApi.sports()); }
   catch (error) { res.status(502).json({ error: error.message }); }
 });
-
 app.get('/api/odds/:sportKey', async (req, res) => {
   try { res.json(await oddsApi.odds({ sportKey: req.params.sportKey, ...req.query })); }
   catch (error) { res.status(502).json({ error: error.message }); }
@@ -223,17 +253,14 @@ app.post('/api/snapshots', async (req, res) => {
   try { res.status(201).json(await store.insert('snapshots', req.body)); }
   catch (error) { res.status(500).json({ error: error.message }); }
 });
-
 app.get('/api/snapshots', async (req, res) => {
   try { res.json(await store.list('snapshots', Number(req.query.limit || 100))); }
   catch (error) { res.status(500).json({ error: error.message }); }
 });
-
 app.get('/api/history', async (req, res) => {
   try { res.json(await store.list(null, Number(req.query.limit || 100))); }
   catch (error) { res.status(500).json({ error: error.message }); }
 });
-
 app.get('/api/history/:category', async (req, res) => {
   try { res.json(await store.list(req.params.category, Number(req.query.limit || 100))); }
   catch (error) { res.status(500).json({ error: error.message }); }
@@ -264,13 +291,15 @@ app.listen(PORT, async () => {
   if (process.env.AUTO_BOOTSTRAP_HISTORY === '1') {
     try {
       const summary = await store.dataSummary();
-      const total = (summary || []).reduce((s, r) => s + Number(r.finished || 0), 0);
-      if (!total) {
-        console.log('[bootstrap] Base vacía: cargando historial real…');
-        const result = await store.bootstrap('all');
-        console.log(`[bootstrap] Historial cargado: ${result.total_rows || 0} registros`);
+      const keys = new Set((summary || []).map(r => r.league_key));
+      const missingEurope = ['premier_league','laliga','serie_a'].filter(k => !keys.has(k));
+      if (missingEurope.length) {
+        console.log(`[bootstrap] Faltan ligas: ${missingEurope.join(', ')}. Cargando Europa…`);
+        const result = await store.bootstrap('europe');
+        console.log(`[bootstrap] Base actualizada: ${result.total_rows || 0} registros`);
       } else {
-        console.log(`[bootstrap] Base existente: ${total} partidos`);
+        const total = (summary || []).reduce((s, r) => s + Number(r.finished || 0), 0);
+        console.log(`[bootstrap] Base existente: ${total} partidos en ${summary.length} ligas`);
       }
     } catch (error) {
       console.error('[bootstrap]', error.message);
