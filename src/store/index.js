@@ -5,20 +5,21 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const connected = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 const EDGE_URL = connected ? `${SUPABASE_URL}/functions/v1/futbol-quant-history` : '';
+const RESULTS_EDGE_URL = connected ? `${SUPABASE_URL}/functions/v1/fq-refresh-results` : '';
 
-async function edge(action, payload = {}, timeoutMs = 15000) {
+async function postEdge(url, body, timeoutMs = 15000) {
   if (!connected) throw new Error('Supabase no está conectado');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(EDGE_URL, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         apikey: SUPABASE_ANON_KEY,
         authorization: `Bearer ${SUPABASE_ANON_KEY}`
       },
-      body: JSON.stringify({ action, ...payload }),
+      body: JSON.stringify(body || {}),
       signal: controller.signal
     });
     const text = await response.text();
@@ -33,6 +34,10 @@ async function edge(action, payload = {}, timeoutMs = 15000) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function edge(action, payload = {}, timeoutMs = 15000) {
+  return postEdge(EDGE_URL, { action, ...payload }, timeoutMs);
 }
 
 async function insert(table, row) {
@@ -91,6 +96,11 @@ async function settlePredictionAudit(id, homeGoals, awayGoals) {
   return edge('settle_audit', { id, homeGoals, awayGoals });
 }
 
+async function refreshPendingPredictionResults(limit = 100) {
+  if (!connected) return { ok: false, checked: 0, settled: 0, stillPending: 0 };
+  return postEdge(RESULTS_EDGE_URL, { limit: Math.min(Math.max(Number(limit || 100), 1), 250) }, 20000);
+}
+
 function status() {
   return { persistent: connected, backend: connected ? 'supabase-edge' : 'memory' };
 }
@@ -105,5 +115,6 @@ module.exports = {
   savePredictionAudit,
   listPredictionAudit,
   settlePredictionAudit,
+  refreshPendingPredictionResults,
   status
 };
