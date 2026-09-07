@@ -114,14 +114,14 @@
       <section class="view" id="view-progol">
         <div class="section-intro"><div><p class="eyebrow">PROGOL</p><h2>Probabilidades L / E / V</h2></div><p>El premio depende de la bolsa y del número de ganadores; por eso aquí no se promete una cantidad de premio.</p></div>
         <p class="simple-note" style="margin-bottom:16px"><b>Qué hace:</b> muestra el porcentaje estimado de cada resultado y arma combinaciones según tu presupuesto. “Doble” cubre dos resultados; “Triple” cubre los tres.</p>
-        <div class="notice danger" id="demoNotice">Cargando…</div>
+        <div class="notice" id="demoNotice">Calculando con la base real…</div>
         <div class="progol-controls panel compact">
           <div class="field"><label>Presupuesto ($)</label><input type="number" id="progolBudget" min="15" step="15" value="150"></div>
           <div class="field"><label>Perfil</label><select id="progolMode"><option value="conservative">Más conservador</option><option value="balanced" selected>Balanceado</option><option value="contrarian">Más arriesgado</option></select></div>
           <button class="primary" id="optimizeBtn">Armar combinaciones</button>
         </div>
         <div class="progol-table-wrap panel">
-          <table class="progol-table"><thead><tr><th>#</th><th>Partido</th><th>Probabilidad FQ</th><th>Elección pública</th><th>Sugerencia</th></tr></thead><tbody id="progolBody"></tbody></table>
+          <table class="progol-table"><thead><tr><th>#</th><th>Partido / torneo</th><th>Probabilidad FQ</th><th>Elección pública</th><th>Sugerencia</th></tr></thead><tbody id="progolBody"></tbody></table>
         </div>
         <article class="panel" id="progolResult"><div class="empty">Genera combinaciones dentro de tu presupuesto.</div></article>
       </section>
@@ -151,5 +151,6 @@
     </main>
   </div>
   <script src="./app.js"></script>
+  <script src="./progol-real.js"></script>
 </body>
 </html>
