@@ -7,6 +7,7 @@
   <title>Fútbol Quant — Probabilidades e historial</title>
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./simple.css" />
+  <link rel="stylesheet" href="./history-table.css?v=134" />
 </head>
 <body>
   <div class="app-shell">
@@ -127,9 +128,13 @@
       </section>
 
       <section class="view" id="view-history">
-        <div class="section-intro"><div><p class="eyebrow">HISTORIAL</p><h2>Pronósticos que ya hiciste</h2></div><p>Sirve para comprobar después si el modelo realmente acierta y está bien calibrado.</p></div>
-        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes ver:</b> fecha del análisis, partido y porcentajes que calculó Fútbol Quant en ese momento. Si no has calculado ningún partido todavía, estará vacío.</p>
-        <article class="panel"><div class="panel-title"><div><h3>Últimos pronósticos</h3></div><button class="ghost" id="loadHistoryBtn">Recargar</button></div><div class="history-list" id="historyList"><div class="empty">Cargando…</div></div></article>
+        <div class="section-intro"><div><p class="eyebrow">HISTORIAL</p><h2>Pronósticos que ya hiciste</h2></div><p>Compara lo que estimó Fútbol Quant antes del partido contra el resultado real.</p></div>
+        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes ver:</b> cada fila separa claramente el partido, los porcentajes FQ, la lectura principal, el resultado real y si acertó. Si el partido aún no tiene resultado confirmado, aparecerá como Pendiente.</p>
+        <article class="panel">
+          <div class="panel-title"><div><h3>Auditoría de pronósticos</h3></div><button class="ghost" id="historyReloadTable">Recargar</button></div>
+          <div id="historyTableContainer"><div class="empty">Entra a Historial para cargar los registros.</div></div>
+          <div id="historyListLegacy" style="display:none"><div id="historyList"></div><button id="loadHistoryBtn" type="button" style="display:none">Recargar legado</button></div>
+        </article>
       </section>
 
       <section class="view" id="view-data">
@@ -150,7 +155,8 @@
       </section>
     </main>
   </div>
-  <script src="./app.js"></script>
-  <script src="./progol-real.js"></script>
+  <script src="./app.js?v=132"></script>
+  <script src="./progol-real.js?v=132"></script>
+  <script src="./history-table.js?v=134"></script>
 </body>
 </html>
