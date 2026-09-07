@@ -36,3 +36,17 @@ async function loadProgolReal(){
 
 setTimeout(loadProgolReal,0);
 $('#refreshBtn')?.addEventListener('click',()=>setTimeout(loadProgolReal,100));
+
+(function loadFriendlyUi(){
+  if(!document.querySelector('link[href="./ui-fixes.css"]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='./ui-fixes.css';
+    document.head.appendChild(link);
+  }
+  if(!document.querySelector('script[src="./ui-fixes.js"]')){
+    const script=document.createElement('script');
+    script.src='./ui-fixes.js';
+    document.body.appendChild(script);
+  }
+})();
