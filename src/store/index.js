@@ -4,8 +4,9 @@ const memory = { snapshots: [], predictions: [], bets: [] };
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const connected = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-const EDGE_URL = connected ? `${SUPABASE_URL}/functions/v1/futbol-quant-history` : '';
+const EDGE_URL = connected ? `${SUPABASE_URL}/functions/v1/fq-core` : '';
 const RESULTS_EDGE_URL = connected ? `${SUPABASE_URL}/functions/v1/fq-refresh-results` : '';
+const INTERNAL_KEY = process.env.FQ_INTERNAL_KEY || 'mTZVlJHyCupE0ex7DtvBXBYeHX8Cx0WdZk0hSTWOtgQ';
 
 async function postEdge(url, body, timeoutMs = 15000) {
   if (!connected) throw new Error('Supabase no está conectado');
@@ -17,7 +18,8 @@ async function postEdge(url, body, timeoutMs = 15000) {
       headers: {
         'content-type': 'application/json',
         apikey: SUPABASE_ANON_KEY,
-        authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-fq-key': INTERNAL_KEY
       },
       body: JSON.stringify(body || {}),
       signal: controller.signal
@@ -26,7 +28,10 @@ async function postEdge(url, body, timeoutMs = 15000) {
     let data;
     try { data = text ? JSON.parse(text) : null; }
     catch { throw new Error(`Respuesta inválida de Supabase (${response.status})`); }
-    if (!response.ok) throw new Error(data?.error || `Supabase HTTP ${response.status}`);
+    if (!response.ok) {
+      const msg = typeof data?.error === 'string' ? data.error : JSON.stringify(data?.error || data || {});
+      throw new Error(msg || `Supabase HTTP ${response.status}`);
+    }
     return data;
   } catch (error) {
     if (error?.name === 'AbortError') throw new Error('Supabase tardó demasiado en responder');
