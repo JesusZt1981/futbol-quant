@@ -6,15 +6,22 @@
   if(!document.querySelector('link[data-fq-ui="stable"]')){
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='./ui-fixes.css?v=1.3.2';
+    link.href='./ui-fixes.css?v=1.3.3';
     link.dataset.fqUi='stable';
     document.head.appendChild(link);
   }
   if(!document.querySelector('script[data-fq-ui="stable"]')){
     const script=document.createElement('script');
-    script.src='./ui-fixes.js?v=1.3.2';
+    script.src='./ui-fixes.js?v=1.3.3';
     script.defer=true;
     script.dataset.fqUi='stable';
+    document.body.appendChild(script);
+  }
+  if(!document.querySelector('script[data-fq-results="stable"]')){
+    const script=document.createElement('script');
+    script.src='./refresh-results.js?v=1.3.3';
+    script.defer=true;
+    script.dataset.fqResults='stable';
     document.body.appendChild(script);
   }
 })();
