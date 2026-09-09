@@ -1,10 +1,8 @@
 'use strict';
 
-// V05 conserva la base estable y cambia únicamente Historial:
-// Actualizar datos consulta fuentes deportivas en internet para registros pendientes,
-// guarda marcador/competición y nunca modifica registros ya finalizados.
+// V06 conserva V05 y corrige únicamente el buscador automático de resultados.
 (() => {
-  const BUILD_VERSION = 'V05';
+  const BUILD_VERSION = 'V06';
 
   function showBuildVersion() {
     let badge = document.querySelector('#fqBuildVersion');
@@ -25,7 +23,7 @@
     if (document.querySelector('link[data-fq-ui="stable"]')) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = './ui-fixes.css?v=V05';
+    link.href = './ui-fixes.css?v=V06';
     link.dataset.fqUi = 'stable';
     document.head.appendChild(link);
   }
@@ -40,10 +38,9 @@
   }
 
   injectStyle();
-  injectScript('./ui-fixes.js?v=V05', 'data-fq-ui', 'stable');
-  injectScript('./history-refresh.js?v=V05', 'data-fq-history-refresh', 'v05');
-  // Fuerza el código nuevo de la tabla aunque Chrome conserve history-table.js?v=134 en caché.
-  injectScript('./history-table.js?v=V05', 'data-fq-history-table', 'v05');
+  injectScript('./ui-fixes.js?v=V06', 'data-fq-ui', 'stable');
+  injectScript('./history-refresh.js?v=V06', 'data-fq-history-refresh', 'v06');
+  injectScript('./history-table.js?v=V06', 'data-fq-history-table', 'v06');
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', showBuildVersion, { once: true });
