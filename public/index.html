@@ -4,27 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f4f1ec" />
-  <title>Fútbol Quant · R07</title>
-  <link rel="stylesheet" href="./fq2.css?v=R07" />
+  <title>Fútbol Quant · R08</title>
+  <link rel="stylesheet" href="./fq2.css?v=R08" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand-wrap"><div class="brand-mark">FQ</div><div><div class="kicker">FÚTBOL QUANT · RESET</div><div class="brand-name">Data Lab</div></div></div>
-    <div class="top-nav"><button id="navSearch" class="nav-btn active" type="button">Buscar web</button><button id="navSaved" class="nav-btn" type="button">Datos guardados</button></div>
-    <div class="top-actions"><span class="version">R07</span><button id="themeBtn" class="icon-btn" type="button">◐</button></div>
+    <div class="top-nav"><button id="navSearch" class="nav-btn active" type="button">Buscar web</button><button id="navSaved" class="nav-btn" type="button">Datos guardados</button><button id="navAdmin" class="nav-btn" type="button">Administrar base</button></div>
+    <div class="top-actions"><span class="version">R08</span><button id="themeBtn" class="icon-btn" type="button">◐</button></div>
   </header>
 
   <main class="page compact-page">
     <div id="searchView">
-      <section class="info-strip">
-        <div><strong>Buscar partidos y datos reales</strong><span>Consulta varias fuentes, compara con Supabase y solo guarda finalizados.</span></div>
-        <div class="flow-mini">Buscar → Comparar → Enriquecer → Guardar</div>
-      </section>
-
+      <section class="info-strip"><div><strong>Buscar partidos y datos reales</strong><span>Consulta varias fuentes, compara con Supabase y solo guarda finalizados.</span></div><div class="flow-mini">Buscar → Comparar → Enriquecer → Guardar</div></section>
       <section class="search-card card"><div class="section-head"><div><p class="eyebrow">BUSCADOR WEB</p><h2>¿Qué quieres investigar?</h2></div><div class="source-badges"><span>Sofascore</span><span>ESPN</span><span>TheSportsDB</span></div></div><div class="search-grid"><label><span>Competición</span><select id="competitionSelect"><option value="">Cargando…</option></select></label><label><span>Desde</span><input id="dateFrom" type="date" /></label><label><span>Hasta</span><input id="dateTo" type="date" /></label><button id="searchBtn" class="primary" type="button">Buscar datos en la web</button></div><div id="searchStatus" class="status-line">Listo para buscar.</div></section>
-
       <section id="resultsSection" class="card hidden"><div class="section-head"><div><p class="eyebrow">RESULTADOS</p><h2>Partidos encontrados</h2></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div id="resultCount" class="metric-chip">0 partidos</div><button id="saveAllBtn" class="primary green hidden" type="button" disabled>Guardar/enriquecer faltantes</button></div></div><div id="saveAllStatus" class="status-line">Nada guardado todavía.</div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Partido</th><th>Estado</th><th>Marcador</th><th>Fuente</th><th>Base</th></tr></thead><tbody id="resultsBody"></tbody></table></div></section>
-
       <section id="detailSection" class="hidden"><div class="detail-top"><button id="backBtn" class="link-btn" type="button">← Volver a resultados</button><div id="detailActions"></div></div><div class="match-hero card"><div class="match-meta" id="detailMeta"></div><div class="scoreboard"><div class="team-block"><img id="homeLogo" alt="" /><strong id="homeName">—</strong></div><div class="score-block"><span id="homeScore">—</span><em>:</em><span id="awayScore">—</span><small id="matchStatus">—</small></div><div class="team-block"><img id="awayLogo" alt="" /><strong id="awayName">—</strong></div></div></div><div class="data-tabs" id="dataTabs"><button class="active" data-tab="summary">Resumen</button><button data-tab="stats">Estadísticas</button><button data-tab="events">Eventos</button><button data-tab="lineups">Alineaciones</button><button data-tab="availability">Bajas</button><button data-tab="context">Contexto</button><button data-tab="markets">Mercado</button></div><div id="tab-summary" class="tab-panel active"><div class="info-grid"><article class="card mini"><span>Competición</span><strong id="sumCompetition">—</strong></article><article class="card mini"><span>Fecha</span><strong id="sumDate">—</strong></article><article class="card mini"><span>Estadio</span><strong id="sumVenue">—</strong></article><article class="card mini"><span>Fuente</span><strong id="sumSource">—</strong></article></div></div><div id="tab-stats" class="tab-panel"></div><div id="tab-events" class="tab-panel"></div><div id="tab-lineups" class="tab-panel"></div><div id="tab-availability" class="tab-panel"></div><div id="tab-context" class="tab-panel"></div><div id="tab-markets" class="tab-panel"></div></section>
     </div>
 
@@ -33,8 +27,15 @@
       <section class="saved-tools card"><div class="search-grid saved-grid"><label><span>Competición</span><select id="savedCompetition"><option value="">Todas las competiciones</option></select></label><label><span>Buscar equipo</span><input id="savedTeam" type="search" placeholder="Milan, Barcelona, Toluca…" /></label><label><span>Por página</span><select id="savedPageSize"><option value="50">50</option><option value="100">100</option></select></label><button id="savedSearchBtn" class="primary" type="button">Consultar Supabase</button></div><div id="savedStatus" class="status-line">Listo.</div></section>
       <section class="card saved-table-card"><div class="section-head"><div><p class="eyebrow">BASE REAL</p><h2>Partidos guardados</h2></div><div id="savedCount" class="metric-chip">0 partidos</div></div><div class="table-wrap wide"><table class="data-table"><thead><tr><th>Fecha</th><th>Competición</th><th>Local</th><th>Res</th><th>Visita</th><th>xG L</th><th>xG V</th><th>Pos L</th><th>Tiros L/V</th><th>Puerta L/V</th><th>Corners L/V</th><th>Les L/V</th><th>Altura</th><th>Datos</th></tr></thead><tbody id="savedBody"><tr><td colspan="14"><div class="empty">Consulta la base para ver resultados.</div></td></tr></tbody></table></div><div class="pager"><button id="prevPage" class="small-btn secondary" type="button">← Anterior</button><span id="pageInfo">Página 1</span><button id="nextPage" class="small-btn secondary" type="button">Siguiente →</button></div></section>
     </div>
+
+    <div id="adminView" class="hidden">
+      <section class="info-strip"><div><strong>Administrar datos guardados</strong><span>Selecciona competición y rango antes de borrar. Primero se calcula exactamente cuántos registros serían afectados.</span></div></section>
+      <section class="card saved-tools"><div class="section-head"><div><p class="eyebrow">BORRADO CONTROLADO</p><h2>Vista previa</h2></div><div id="adminCount" class="metric-chip">0 partidos</div></div><div class="search-grid"><label><span>Competición</span><select id="adminCompetition"><option value="">Cargando…</option></select></label><label><span>Desde</span><input id="adminFrom" type="date" /></label><label><span>Hasta</span><input id="adminTo" type="date" /></label><button id="adminPreviewBtn" class="primary" type="button">Calcular qué se borraría</button></div><div id="adminStatus" class="status-line">No se borra nada desde esta pantalla sin revisar primero.</div></section>
+      <section class="card saved-tools"><div class="section-head"><div><p class="eyebrow">SEGURIDAD</p><h2>SQL de borrado</h2></div></div><p class="status-line">Como la web es pública y todavía no tiene autenticación administrativa, no expuse un botón de borrado directo. La app genera el SQL exacto para que lo ejecutes en Supabase SQL Editor después de revisar el conteo.</p><textarea id="adminSql" readonly style="width:100%;min-height:130px;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--soft);color:var(--ink);font:13px ui-monospace,monospace"></textarea><div style="margin-top:12px"><button id="copyDeleteSql" class="primary" type="button" disabled>Copiar SQL de borrado</button></div></section>
+    </div>
   </main>
-  <script src="./fq2.js?v=R07"></script>
-  <script src="./fq2-r06.js?v=R07"></script>
+  <script src="./fq2.js?v=R08"></script>
+  <script src="./fq2-r06.js?v=R08"></script>
+  <script src="./fq2-r08.js?v=R08"></script>
 </body>
 </html>
