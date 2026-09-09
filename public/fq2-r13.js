@@ -16,24 +16,34 @@ function perfMetric(label,forValue,againstValue,suffix=''){
   return `<tr><td>${esc(label)}</td><td><b>${esc(f)}</b></td><td>${esc(a)}</td></tr>`;
 }
 
+function perfFillCompetitions(){
+  const comp=$('#perfCompetition');
+  if(!comp||!state.catalog?.length)return;
+  const current=comp.value;
+  comp.innerHTML='<option value="">Todas</option>'+state.catalog.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}</option>`).join('');
+  if([...comp.options].some(o=>o.value===current))comp.value=current;
+}
+
 function perfShowView(which){
   for(const id of ['searchView','savedView','adminView','performanceView']){const el=$(`#${id}`);if(el)el.classList.add('hidden')}
   for(const id of ['navSearch','navSaved','navAdmin','navPerformance']){const el=$(`#${id}`);if(el)el.classList.remove('active')}
   if(which==='saved'){$('#savedView').classList.remove('hidden');$('#navSaved').classList.add('active');loadSaved(1)}
   else if(which==='admin'){$('#adminView').classList.remove('hidden');$('#navAdmin').classList.add('active')}
-  else if(which==='performance'){$('#performanceView').classList.remove('hidden');$('#navPerformance').classList.add('active');loadPerfCatalog()}
+  else if(which==='performance'){$('#performanceView').classList.remove('hidden');$('#navPerformance').classList.add('active');perfFillCompetitions();loadPerfCatalog()}
   else{$('#searchView').classList.remove('hidden');$('#navSearch').classList.add('active')}
 }
 
 async function loadPerfCatalog(){
   const sel=$('#perfTeam');
   if(!sel)return;
+  perfFillCompetitions();
   if(perfTeams.length)return;
   $('#perfStatus').textContent='Cargando equipos…';
   try{
     const d=await perfApi({action:'catalog'});
     perfTeams=d.teams||[];
     sel.innerHTML='<option value="">Selecciona un equipo…</option>'+perfTeams.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} (${t.matches})</option>`).join('');
+    perfFillCompetitions();
     $('#perfStatus').textContent=`${perfTeams.length} equipos disponibles.`;
   }catch(e){$('#perfStatus').textContent=`Error: ${e.message}`}
 }
@@ -98,8 +108,6 @@ window.addEventListener('DOMContentLoaded',()=>{
       <section class="card"><div class="section-head"><div><p class="eyebrow">MUESTRA</p><h2>Partidos utilizados</h2></div></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Condición</th><th>Rival</th><th>Marcador</th><th>Resultado</th><th>Competición</th></tr></thead><tbody id="perfMatches"></tbody></table></div></section>`;
     main.appendChild(box);
   }
-  const comp=$('#perfCompetition');
-  if(comp&&state.catalog?.length)comp.innerHTML='<option value="">Todas</option>'+state.catalog.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}</option>`).join('');
   $('#navSearch').onclick=()=>perfShowView('search');
   $('#navSaved').onclick=()=>perfShowView('saved');
   $('#navAdmin').onclick=()=>perfShowView('admin');
