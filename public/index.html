@@ -3,160 +3,144 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0c1720" />
-  <title>Fútbol Quant — Probabilidades e historial</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <link rel="stylesheet" href="./simple.css" />
-  <link rel="stylesheet" href="./history-table.css?v=134" />
+  <meta name="theme-color" content="#f4f1ec" />
+  <title>Fútbol Quant · R01</title>
+  <link rel="stylesheet" href="./fq2.css?v=R01" />
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">FQ</div>
-        <div><strong>Fútbol Quant</strong><small>Análisis probabilístico</small></div>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <div class="brand-mark">FQ</div>
+      <div>
+        <div class="kicker">FÚTBOL QUANT · RESET</div>
+        <div class="brand-name">Data Lab</div>
       </div>
-      <nav>
-        <button class="nav-btn active" data-view="overview">Inicio</button>
-        <button class="nav-btn" data-view="predict">Pronóstico</button>
-        <button class="nav-btn" data-view="bet">Casa de apuestas</button>
-        <button class="nav-btn" data-view="progol">Progol</button>
-        <button class="nav-btn" data-view="history">Historial</button>
-        <button class="nav-btn" data-view="data">Base de datos</button>
-      </nav>
-      <div class="sidebar-footer"><span class="dot" id="healthDot"></span><span id="healthText">Conectando…</span></div>
-    </aside>
+    </div>
+    <div class="top-actions">
+      <span class="version">R01</span>
+      <button id="themeBtn" class="icon-btn" type="button" aria-label="Cambiar tema">◐</button>
+    </div>
+  </header>
 
-    <main class="main">
-      <header class="topbar">
-        <div><p class="eyebrow">FÚTBOL QUANT</p><h1 id="pageTitle">Inicio</h1></div>
-        <button class="ghost" id="refreshBtn">Actualizar datos</button>
-      </header>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">PASO 1 · INVESTIGAR ANTES DE GUARDAR</p>
+        <h1>Buscar partidos y datos reales en la web.</h1>
+        <p class="hero-copy">Selecciona una competición y un rango corto de fechas. Fútbol Quant busca partidos reales en fuentes deportivas, te muestra lo encontrado y <strong>no guarda nada</strong> hasta que tú lo apruebes.</p>
+      </div>
+      <div class="hero-pill">
+        <span>Flujo</span>
+        <strong>Buscar → Revisar → Guardar</strong>
+      </div>
+    </section>
 
-      <section class="view active" id="view-overview">
-        <div class="hero-card">
-          <div>
-            <p class="eyebrow">QUÉ HACE</p>
-            <h2>Partidos, probabilidades y seguimiento.</h2>
-            <p class="lead">Aquí debes poder abrir un partido real, ver la probabilidad de local / empate / visitante y, si está en vivo, comparar cómo cambia la probabilidad del mercado durante el juego.</p>
+    <section class="search-card card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">BUSCADOR WEB</p>
+          <h2>¿Qué quieres investigar?</h2>
+        </div>
+        <div class="source-badges"><span>ESPN</span><span>TheSportsDB</span></div>
+      </div>
+      <div class="search-grid">
+        <label>
+          <span>Competición</span>
+          <select id="competitionSelect"><option value="">Cargando…</option></select>
+        </label>
+        <label>
+          <span>Desde</span>
+          <input id="dateFrom" type="date" />
+        </label>
+        <label>
+          <span>Hasta</span>
+          <input id="dateTo" type="date" />
+        </label>
+        <button id="searchBtn" class="primary" type="button">Buscar datos en la web</button>
+      </div>
+      <div id="searchStatus" class="status-line">Listo para buscar.</div>
+    </section>
+
+    <section id="resultsSection" class="card hidden">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">RESULTADOS</p>
+          <h2>Partidos encontrados</h2>
+        </div>
+        <div id="resultCount" class="metric-chip">0 partidos</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Partido</th><th>Estado</th><th>Marcador</th><th>Fuente</th><th></th></tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="detailSection" class="hidden">
+      <div class="detail-top">
+        <button id="backBtn" class="link-btn" type="button">← Volver a resultados</button>
+        <div id="detailActions"></div>
+      </div>
+
+      <div class="match-hero card">
+        <div class="match-meta" id="detailMeta"></div>
+        <div class="scoreboard">
+          <div class="team-block"><img id="homeLogo" alt="" /><strong id="homeName">—</strong></div>
+          <div class="score-block"><span id="homeScore">—</span><em>:</em><span id="awayScore">—</span><small id="matchStatus">—</small></div>
+          <div class="team-block"><img id="awayLogo" alt="" /><strong id="awayName">—</strong></div>
+        </div>
+      </div>
+
+      <div class="data-tabs" id="dataTabs">
+        <button class="active" data-tab="summary">Resumen</button>
+        <button data-tab="stats">Estadísticas</button>
+        <button data-tab="events">Eventos</button>
+        <button data-tab="lineups">Alineaciones</button>
+        <button data-tab="availability">Bajas</button>
+        <button data-tab="context">Contexto</button>
+        <button data-tab="markets">Mercado</button>
+      </div>
+
+      <div id="tab-summary" class="tab-panel active">
+        <div class="info-grid">
+          <article class="card mini"><span>Competición</span><strong id="sumCompetition">—</strong></article>
+          <article class="card mini"><span>Fecha</span><strong id="sumDate">—</strong></article>
+          <article class="card mini"><span>Estadio</span><strong id="sumVenue">—</strong></article>
+          <article class="card mini"><span>Fuente</span><strong id="sumSource">—</strong></article>
+        </div>
+        <div class="card schema-card">
+          <div class="section-head"><div><p class="eyebrow">SUPABASE</p><h3>Qué tablas recibirán estos datos</h3></div></div>
+          <div class="schema-grid">
+            <span>fq2_matches</span><span>fq2_team_match_stats</span><span>fq2_match_events</span><span>fq2_lineups</span><span>fq2_player_availability</span><span>fq2_match_context</span><span>fq2_market_snapshots</span><span>fq2_source_records</span>
           </div>
-          <div class="hero-score"><span>%</span><strong>Probabilidad</strong><small>no “picks”</small></div>
         </div>
+      </div>
+      <div id="tab-stats" class="tab-panel"></div>
+      <div id="tab-events" class="tab-panel"></div>
+      <div id="tab-lineups" class="tab-panel"></div>
+      <div id="tab-availability" class="tab-panel"></div>
+      <div id="tab-context" class="tab-panel"></div>
+      <div id="tab-markets" class="tab-panel"></div>
+    </section>
 
-        <div class="data-strip" id="overviewData">
-          <div class="data-box"><span>Partidos históricos</span><strong id="totalMatches">0</strong></div>
-          <div class="data-box"><span>Ligas con datos</span><strong id="totalLeagues">0</strong></div>
-          <div class="data-box"><span>Historial guardado</span><strong class="badge-ok">Supabase</strong></div>
-          <div class="data-box"><span>Versión</span><strong id="appVersion">—</strong></div>
-        </div>
+    <section class="card model-card">
+      <div class="section-head">
+        <div><p class="eyebrow">MODELO DE DATOS</p><h2>Lo que debemos capturar para acercarnos a una casa de apuestas</h2></div>
+      </div>
+      <div class="factor-grid">
+        <div><b>Rendimiento</b><span>forma, local/visita, goles, xG, tiros, posesión, balón parado</span></div>
+        <div><b>Plantilla</b><span>alineación probable/confirmada, lesiones, sanciones, portero y peso de cada jugador</span></div>
+        <div><b>Contexto</b><span>competición, descanso, viaje, estadio, altura, clima, árbitro</span></div>
+        <div><b>Mercado</b><span>probabilidades implícitas, movimiento de precio, consenso y liquidez</span></div>
+        <div><b>Situación</b><span>fase del torneo, necesidad de puntos, ida/vuelta, rotación y calendario</span></div>
+        <div><b>Calidad de datos</b><span>fuente, hora de captura, cobertura y datos faltantes</span></div>
+      </div>
+    </section>
+  </main>
 
-        <div class="grid two align-start">
-          <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">AHORA</p><h3>Partidos en vivo</h3></div><button class="ghost" id="reloadLiveBtn">Actualizar</button></div>
-            <p class="simple-note">Si hay una fuente en vivo conectada, aquí aparecen los partidos que están jugando ahora. Al abrir uno verás marcador, minuto y porcentajes del mercado.</p>
-            <div id="liveMatches" class="history-list" style="margin-top:12px"><div class="empty">Consultando partidos en vivo…</div></div>
-          </article>
-          <article class="panel" id="liveDetail">
-            <div class="panel-title"><div><p class="eyebrow">SEGUIMIENTO</p><h3>Probabilidad en vivo</h3></div></div>
-            <div class="empty">Selecciona un partido en vivo para ver cómo cambian los porcentajes.</div>
-          </article>
-        </div>
-
-        <div class="grid two">
-          <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">PRONÓSTICO PREVIO</p><h3>Qué significa el porcentaje</h3></div></div>
-            <div class="prob-grid">
-              <div class="prob-card best"><span>Gana local</span><strong>48%</strong></div>
-              <div class="prob-card"><span>Empate</span><strong>27%</strong></div>
-              <div class="prob-card"><span>Gana visitante</span><strong>25%</strong></div>
-            </div>
-            <p class="simple-note">48% no significa “seguro”. Significa que, según el modelo y los datos disponibles, ese resultado tiene la mayor probabilidad estimada.</p>
-          </article>
-          <article class="panel">
-            <div class="panel-title"><div><p class="eyebrow">CASA DE APUESTAS</p><h3>Todo traducido a pesos y porcentajes</h3></div></div>
-            <div class="payoff-grid">
-              <div><span>Si apuestas</span><strong>$100</strong></div>
-              <div><span>La casa devuelve</span><strong>$190</strong></div>
-              <div><span>Ganancia neta</span><strong>$90</strong></div>
-            </div>
-            <p class="simple-note" style="margin-top:12px">La aplicación convierte el pago de la casa a una probabilidad mínima y la compara con la probabilidad Fútbol Quant.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="view" id="view-predict">
-        <div class="section-intro"><div><p class="eyebrow">PRONÓSTICO</p><h2>Selecciona un partido</h2></div><p>Esta pantalla calcula probabilidades antes del partido usando el historial real guardado.</p></div>
-        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes hacer:</b> elige liga, equipo local y visitante. El botón calcula Local / Empate / Visitante y guarda el análisis en Historial. Si las listas aparecen vacías, la Base de datos todavía no está cargada.</p>
-        <div class="grid two align-start">
-          <form class="panel form-grid" id="predictForm">
-            <div class="field span-2"><label>1. Liga</label><select id="leagueSelect" name="league"><option value="">Selecciona…</option></select></div>
-            <div class="field"><label>2. Equipo local</label><select id="homeSelect" name="home"><option value="">Selecciona…</option></select></div>
-            <div class="field"><label>3. Equipo visitante</label><select id="awaySelect" name="away"><option value="">Selecciona…</option></select></div>
-            <button class="primary span-2 big-action" type="submit">4. Calcular probabilidades</button>
-          </form>
-          <article class="panel" id="predictResult"><div class="empty">Aquí aparecerán los porcentajes del partido seleccionado.</div></article>
-        </div>
-      </section>
-
-      <section class="view" id="view-bet">
-        <div class="section-intro"><div><p class="eyebrow">CASA DE APUESTAS</p><h2>¿Qué significa el pago de la casa?</h2></div><p>Sin mostrar momios: usamos cuánto arriesgas, cuánto te devolverían y lo convertimos a porcentaje.</p></div>
-        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes hacer:</b> coloca la probabilidad de Fútbol Quant, cuánto quieres apostar y cuánto te devolvería la casa si aciertas. El sistema te dice la ganancia neta y si el pago compensa la probabilidad.</p>
-        <div class="grid two align-start">
-          <form class="panel form-grid" id="betForm">
-            <div class="field"><label>Probabilidad Fútbol Quant (%)</label><input id="betProb" type="number" min="1" max="99" step="0.1" value="55"></div>
-            <div class="field"><label>¿Cuánto quieres apostar? ($)</label><input id="betAmount" type="number" min="1" step="1" value="100"></div>
-            <div class="field span-2"><label>Si apuestas $100, ¿cuánto devuelve la casa en total si ganas? ($)</label><input id="houseReturn100" type="number" min="101" step="1" value="190"></div>
-            <button class="primary span-2 big-action" type="submit">Calcular resultado</button>
-          </form>
-          <article class="panel" id="betResult"><div class="empty">Aquí verás devolución, ganancia neta y comparación de porcentajes.</div></article>
-        </div>
-      </section>
-
-      <section class="view" id="view-progol">
-        <div class="section-intro"><div><p class="eyebrow">PROGOL</p><h2>Probabilidades L / E / V</h2></div><p>El premio depende de la bolsa y del número de ganadores; por eso aquí no se promete una cantidad de premio.</p></div>
-        <p class="simple-note" style="margin-bottom:16px"><b>Qué hace:</b> muestra el porcentaje estimado de cada resultado y arma combinaciones según tu presupuesto. “Doble” cubre dos resultados; “Triple” cubre los tres.</p>
-        <div class="notice" id="demoNotice">Calculando con la base real…</div>
-        <div class="progol-controls panel compact">
-          <div class="field"><label>Presupuesto ($)</label><input type="number" id="progolBudget" min="15" step="15" value="150"></div>
-          <div class="field"><label>Perfil</label><select id="progolMode"><option value="conservative">Más conservador</option><option value="balanced" selected>Balanceado</option><option value="contrarian">Más arriesgado</option></select></div>
-          <button class="primary" id="optimizeBtn">Armar combinaciones</button>
-        </div>
-        <div class="progol-table-wrap panel">
-          <table class="progol-table"><thead><tr><th>#</th><th>Partido / torneo</th><th>Probabilidad FQ</th><th>Elección pública</th><th>Sugerencia</th></tr></thead><tbody id="progolBody"></tbody></table>
-        </div>
-        <article class="panel" id="progolResult"><div class="empty">Genera combinaciones dentro de tu presupuesto.</div></article>
-      </section>
-
-      <section class="view" id="view-history">
-        <div class="section-intro"><div><p class="eyebrow">HISTORIAL</p><h2>Pronósticos que ya hiciste</h2></div><p>Compara lo que estimó Fútbol Quant antes del partido contra el resultado real.</p></div>
-        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes ver:</b> cada fila separa claramente el partido, los porcentajes FQ, la lectura principal, el resultado real y si acertó. Si el partido aún no tiene resultado confirmado, aparecerá como Pendiente.</p>
-        <article class="panel">
-          <div class="panel-title"><div><h3>Auditoría de pronósticos</h3></div><button class="ghost" id="historyReloadTable">Recargar</button></div>
-          <div id="historyTableContainer"><div class="empty">Entra a Historial para cargar los registros.</div></div>
-          <div id="historyListLegacy" style="display:none"><div id="historyList"></div><button id="loadHistoryBtn" type="button" style="display:none">Recargar legado</button></div>
-        </article>
-      </section>
-
-      <section class="view" id="view-data">
-        <div class="section-intro"><div><p class="eyebrow">BASE DE DATOS</p><h2>Datos reales usados por el modelo</h2></div><p>Aquí ves cuántos partidos existen realmente en Supabase. Si marca 0, el pronóstico no puede funcionar.</p></div>
-        <p class="simple-note" style="margin-bottom:16px"><b>Qué debes ver:</b> una tarjeta por liga con número de partidos y rango de fechas. El botón carga o actualiza resultados y no duplica partidos existentes.</p>
-        <div class="grid two align-start">
-          <article class="panel">
-            <div class="panel-title"><div><h3>Cobertura actual</h3></div></div>
-            <div id="dataSummary" class="history-list"><div class="empty">Consultando…</div></div>
-          </article>
-          <article class="panel">
-            <div class="panel-title"><div><h3>Cargar / actualizar historial</h3></div></div>
-            <p class="simple-note">La carga es idempotente: si un partido ya existe, se actualiza y no se duplica.</p>
-            <button class="primary big-action" id="bootstrapBtn" style="margin-top:12px">Cargar / actualizar historial</button>
-            <div id="bootstrapStatus" class="simple-note">Esperando estado de la base…</div>
-          </article>
-        </div>
-      </section>
-    </main>
-  </div>
-  <script src="./app.js?v=132"></script>
-  <script src="./progol-real.js?v=132"></script>
-  <script src="./history-table.js?v=134"></script>
+  <script src="./fq2.js?v=R01"></script>
 </body>
 </html>
