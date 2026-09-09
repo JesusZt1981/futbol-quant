@@ -1,0 +1,2 @@
+Futbol Quant deploy marker 2026-09-08 21:55 America/Chihuahua
+CORS directo eliminado; fq-core activo; refresh de resultados pasa por Render.
