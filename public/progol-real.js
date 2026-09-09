@@ -1,9 +1,10 @@
 'use strict';
 
-// V04 conserva la base estable de V03 y añade únicamente la actualización
-// de resultados pendientes del Historial.
+// V05 conserva la base estable y cambia únicamente Historial:
+// Actualizar datos consulta fuentes deportivas en internet para registros pendientes,
+// guarda marcador/competición y nunca modifica registros ya finalizados.
 (() => {
-  const BUILD_VERSION = 'V04';
+  const BUILD_VERSION = 'V05';
 
   function showBuildVersion() {
     let badge = document.querySelector('#fqBuildVersion');
@@ -20,27 +21,29 @@
     document.title = `Fútbol Quant · ${BUILD_VERSION}`;
   }
 
-  if (!document.querySelector('link[data-fq-ui="stable"]')) {
+  function injectStyle() {
+    if (document.querySelector('link[data-fq-ui="stable"]')) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = './ui-fixes.css?v=V04';
+    link.href = './ui-fixes.css?v=V05';
     link.dataset.fqUi = 'stable';
     document.head.appendChild(link);
   }
-  if (!document.querySelector('script[data-fq-ui="stable"]')) {
+
+  function injectScript(src, marker, value) {
+    if (document.querySelector(`script[${marker}="${value}"]`)) return;
     const script = document.createElement('script');
-    script.src = './ui-fixes.js?v=V04';
+    script.src = src;
     script.defer = true;
-    script.dataset.fqUi = 'stable';
+    script.setAttribute(marker, value);
     document.body.appendChild(script);
   }
-  if (!document.querySelector('script[data-fq-history-refresh="v04"]')) {
-    const script = document.createElement('script');
-    script.src = './history-refresh.js?v=V04';
-    script.defer = true;
-    script.dataset.fqHistoryRefresh = 'v04';
-    document.body.appendChild(script);
-  }
+
+  injectStyle();
+  injectScript('./ui-fixes.js?v=V05', 'data-fq-ui', 'stable');
+  injectScript('./history-refresh.js?v=V05', 'data-fq-history-refresh', 'v05');
+  // Fuerza el código nuevo de la tabla aunque Chrome conserve history-table.js?v=134 en caché.
+  injectScript('./history-table.js?v=V05', 'data-fq-history-table', 'v05');
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', showBuildVersion, { once: true });
