@@ -1,10 +1,9 @@
 'use strict';
 
-// Carga únicamente mejoras visuales estables. La V03 conserva las mejoras
-// actuales y restaura la capa de acceso directo a Supabase que sí cargaba
-// la base de datos, evitando las Edge Functions problemáticas para el historial.
+// V04 conserva la base estable de V03 y añade únicamente la actualización
+// de resultados pendientes del Historial.
 (() => {
-  const BUILD_VERSION = 'V03';
+  const BUILD_VERSION = 'V04';
 
   function showBuildVersion() {
     let badge = document.querySelector('#fqBuildVersion');
@@ -24,15 +23,22 @@
   if (!document.querySelector('link[data-fq-ui="stable"]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = './ui-fixes.css?v=V03';
+    link.href = './ui-fixes.css?v=V04';
     link.dataset.fqUi = 'stable';
     document.head.appendChild(link);
   }
   if (!document.querySelector('script[data-fq-ui="stable"]')) {
     const script = document.createElement('script');
-    script.src = './ui-fixes.js?v=V03';
+    script.src = './ui-fixes.js?v=V04';
     script.defer = true;
     script.dataset.fqUi = 'stable';
+    document.body.appendChild(script);
+  }
+  if (!document.querySelector('script[data-fq-history-refresh="v04"]')) {
+    const script = document.createElement('script');
+    script.src = './history-refresh.js?v=V04';
+    script.defer = true;
+    script.dataset.fqHistoryRefresh = 'v04';
     document.body.appendChild(script);
   }
 
