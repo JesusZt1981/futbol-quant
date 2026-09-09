@@ -4,19 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f4f1ec" />
-  <title>Fútbol Quant · R06</title>
-  <link rel="stylesheet" href="./fq2.css?v=R06" />
+  <title>Fútbol Quant · R07</title>
+  <link rel="stylesheet" href="./fq2.css?v=R07" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand-wrap"><div class="brand-mark">FQ</div><div><div class="kicker">FÚTBOL QUANT · RESET</div><div class="brand-name">Data Lab</div></div></div>
     <div class="top-nav"><button id="navSearch" class="nav-btn active" type="button">Buscar web</button><button id="navSaved" class="nav-btn" type="button">Datos guardados</button></div>
-    <div class="top-actions"><span class="version">R06</span><button id="themeBtn" class="icon-btn" type="button">◐</button></div>
+    <div class="top-actions"><span class="version">R07</span><button id="themeBtn" class="icon-btn" type="button">◐</button></div>
   </header>
 
-  <main class="page">
+  <main class="page compact-page">
     <div id="searchView">
-      <section class="hero"><div><p class="eyebrow">PASO 1 · INVESTIGAR ANTES DE GUARDAR</p><h1>Buscar partidos y datos reales en la web.</h1><p class="hero-copy">Selecciona competición y rango. Fútbol Quant consulta varias fuentes, compara contra Supabase y <strong>solo guarda partidos finalizados con marcador confirmado</strong>.</p></div><div class="hero-pill"><span>Flujo</span><strong>Buscar → Comparar → Enriquecer → Guardar</strong></div></section>
+      <section class="info-strip">
+        <div><strong>Buscar partidos y datos reales</strong><span>Consulta varias fuentes, compara con Supabase y solo guarda finalizados.</span></div>
+        <div class="flow-mini">Buscar → Comparar → Enriquecer → Guardar</div>
+      </section>
 
       <section class="search-card card"><div class="section-head"><div><p class="eyebrow">BUSCADOR WEB</p><h2>¿Qué quieres investigar?</h2></div><div class="source-badges"><span>Sofascore</span><span>ESPN</span><span>TheSportsDB</span></div></div><div class="search-grid"><label><span>Competición</span><select id="competitionSelect"><option value="">Cargando…</option></select></label><label><span>Desde</span><input id="dateFrom" type="date" /></label><label><span>Hasta</span><input id="dateTo" type="date" /></label><button id="searchBtn" class="primary" type="button">Buscar datos en la web</button></div><div id="searchStatus" class="status-line">Listo para buscar.</div></section>
 
@@ -26,12 +29,12 @@
     </div>
 
     <div id="savedView" class="hidden">
-      <section class="hero compact"><div><p class="eyebrow">SUPABASE · DATOS GUARDADOS</p><h1>Lo que realmente está en la base.</h1><p class="hero-copy">Filtra por competición o equipo. La tabla muestra los partidos guardados y qué bloques de información existen realmente para cada uno.</p></div></section>
+      <section class="info-strip"><div><strong>Datos guardados en Supabase</strong><span>Filtra por competición o equipo y revisa qué información existe realmente.</span></div></section>
       <section class="saved-tools card"><div class="search-grid saved-grid"><label><span>Competición</span><select id="savedCompetition"><option value="">Todas las competiciones</option></select></label><label><span>Buscar equipo</span><input id="savedTeam" type="search" placeholder="Milan, Barcelona, Toluca…" /></label><label><span>Por página</span><select id="savedPageSize"><option value="50">50</option><option value="100">100</option></select></label><button id="savedSearchBtn" class="primary" type="button">Consultar Supabase</button></div><div id="savedStatus" class="status-line">Listo.</div></section>
       <section class="card saved-table-card"><div class="section-head"><div><p class="eyebrow">BASE REAL</p><h2>Partidos guardados</h2></div><div id="savedCount" class="metric-chip">0 partidos</div></div><div class="table-wrap wide"><table class="data-table"><thead><tr><th>Fecha</th><th>Competición</th><th>Local</th><th>Res</th><th>Visita</th><th>xG L</th><th>xG V</th><th>Pos L</th><th>Tiros L/V</th><th>Puerta L/V</th><th>Corners L/V</th><th>Les L/V</th><th>Altura</th><th>Datos</th></tr></thead><tbody id="savedBody"><tr><td colspan="14"><div class="empty">Consulta la base para ver resultados.</div></td></tr></tbody></table></div><div class="pager"><button id="prevPage" class="small-btn secondary" type="button">← Anterior</button><span id="pageInfo">Página 1</span><button id="nextPage" class="small-btn secondary" type="button">Siguiente →</button></div></section>
     </div>
   </main>
-  <script src="./fq2.js?v=R06"></script>
-  <script src="./fq2-r06.js?v=R06"></script>
+  <script src="./fq2.js?v=R07"></script>
+  <script src="./fq2-r06.js?v=R07"></script>
 </body>
 </html>
