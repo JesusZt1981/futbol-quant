@@ -2,7 +2,7 @@
 
 (() => {
   const $ = (s) => document.querySelector(s);
-  const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const esc = (v) => String(v ?? '').replace(/[&<>'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
   const pct = (v) => `${(Number(v || 0) * 100).toFixed(1)}%`;
   const outcome = (o, h, a) => o === 'L' ? `${h} (Local)` : o === 'V' ? `${a} (Visitante)` : o === 'E' ? 'Empate' : 'Pendiente';
 
@@ -21,6 +21,19 @@
       clearTimeout(timer);
       controller = null;
     }
+  }
+
+  function competitionText(r) {
+    const raw = String(r.competition || '').trim();
+    if (raw) return raw;
+    const map = {
+      liga_mx:'Liga MX', serie_a:'Serie A', premier_league:'Premier League', laliga:'LaLiga',
+      bundesliga:'Bundesliga', mls:'MLS', leagues_cup:'Leagues Cup',
+      uefa_champions_league:'UEFA Champions League', uefa_europa_league:'UEFA Europa League',
+      uefa_conference_league:'UEFA Conference League', copa_libertadores:'Copa Libertadores',
+      copa_sudamericana:'Copa Sudamericana', concacaf_champions_cup:'CONCACAF Champions Cup'
+    };
+    return map[r.league_key] || r.league_key || 'Por identificar';
   }
 
   function render(rows) {
@@ -46,7 +59,8 @@
         </div>`;
       return `<tr>
         <td data-label="Fecha"><b>${new Date(r.created_at).toLocaleDateString('es-MX')}</b><small>${new Date(r.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</small></td>
-        <td data-label="Partido"><b>${esc(r.home_team)}</b><span> vs </span><b>${esc(r.away_team)}</b><small>${esc(r.competition || r.league_key || '')}</small></td>
+        <td data-label="Partido"><b>${esc(r.home_team)}</b><span> vs </span><b>${esc(r.away_team)}</b></td>
+        <td data-label="Competición"><b>${esc(competitionText(r))}</b></td>
         <td data-label="Probabilidades"><div class="hist-probs"><span>L <b>${pct(r.p_home)}</b></span><span>E <b>${pct(r.p_draw)}</b></span><span>V <b>${pct(r.p_away)}</b></span></div></td>
         <td data-label="Lectura FQ"><b>${esc(lectura)}</b></td>
         <td data-label="Resultado real"><b>${esc(ganador)}</b><small>Marcador: ${marcador}</small>${action}</td>
@@ -55,10 +69,10 @@
     }).join('');
 
     box.innerHTML = `
-      <div class="hist-explainer"><b>Qué significa esta tabla</b><span>La fila guarda lo que Fútbol Quant pensó antes del partido. El resultado real solo aparece cuando se registra o se sincroniza; no se inventa ni se rellena automáticamente con 0-0.</span></div>
+      <div class="hist-explainer"><b>Qué significa esta tabla</b><span>Actualizar datos busca en fuentes deportivas de internet únicamente los registros Pendientes. Cuando encuentra un resultado final, guarda marcador y competición; los registros Finalizados ya no se modifican.</span></div>
       <div class="hist-table-wrap">
         <table class="hist-table">
-          <thead><tr><th>Fecha</th><th>Partido / torneo</th><th>Probabilidades FQ</th><th>Lectura FQ</th><th>Resultado real</th><th>¿Acertó?</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Partido</th><th>Competición</th><th>Probabilidades FQ</th><th>Lectura FQ</th><th>Resultado real</th><th>¿Acertó?</th></tr></thead>
           <tbody>${body}</tbody>
         </table>
       </div>`;
@@ -93,6 +107,8 @@
       btn.disabled = false; btn.textContent = 'Guardar resultado';
     }
   }
+
+  window.fqReloadHistoryTable = load;
 
   function init() {
     $('.nav-btn[data-view="history"]')?.addEventListener('click', () => setTimeout(load, 0));
